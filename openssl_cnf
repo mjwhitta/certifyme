@@ -1,0 +1,116 @@
+# OpenSSL configuration file.
+
+host = TODO_HOST
+ip = TODO_IP
+port = TODO_PORT
+
+city = TODO_CITY
+cn = TODO_CN
+company = TODO_COMPANY
+country = TODO_COUNTRY
+state = TODO_STATE
+unit = TODO_UNIT
+
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+dir = .
+certs = $dir/certs
+new_certs_dir = $dir/certs
+
+database = $dir/index.db
+serial = $dir/index.db.serial
+RANDFILE = $dir/private/.rand
+
+certificate = $dir/ca/ca.cert.pem
+private_key = $dir/private/ca.key.pem
+
+default_md = sha256
+
+name_opt = ca_default
+cert_opt = ca_default
+default_days = 365
+email_in_dn = no
+preserve = no
+policy = policy_string
+
+[ policy_string ]
+countryName = match
+stateOrProvinceName = match
+organizationName = match
+organizationalUnitName = optional
+commonName = supplied
+emailAddress = optional
+
+[ policy_any ]
+countryName = optional
+stateOrProvinceName = optional
+localityName = optional
+organizationName = optional
+organizationalUnitName = optional
+commonName = supplied
+emailAddress = optional
+
+[ req ]
+default_bits = 2048
+distinguished_name = req_distinguished_name
+string_mask = utf8only
+
+default_md = sha256
+
+x509_extensions = v3_ca
+
+[ req_distinguished_name ]
+countryName = Country Name (2 letter code)
+countryName_default = $country
+countryName_min = 2
+countryName_max = 2
+
+stateOrProvinceName = State or Province Name (full name)
+stateOrProvinceName_default = $state
+
+localityName = Locality Name (eg, city)
+localityName_default = $city
+
+0.organizationName = Organization Name (eg, company)
+0.organizationName_default = $company
+
+organizationalUnitName = Organizational Unit Name (eg, section)
+organizationalUnitName_default = $unit
+
+commonName = Common Name (FQDN for server certificates)
+commonName_default = $cn
+commonName_max = 64
+
+[ req_attributes ]
+
+[ v3_ca ]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+[ server_cert ]
+basicConstraints = CA:false
+nsCertType = server
+nsComment = "OpenSSL genereated server certificate"
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+
+[ client_cert ]
+basicConstraints = CA:false
+nsCertType = client, email
+nsComment = "OpenSSL genereated client certificate"
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = critical, digitalSignature, keyEncipherment, nonRepudiation
+extendedKeyUsage = clientAuth, emailProtection
+
+[ additional_req ]
+subjectAltName = @additional_alt_names
+
+[ additional_alt_names ]
+IP.1 = $ip

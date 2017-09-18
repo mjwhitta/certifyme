@@ -1,0 +1,7 @@
+ca
+certs
+csr
+index.db*
+openssl.cnf
+params
+private

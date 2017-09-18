@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+
+create_ca() {
+    create_key ca.key
+
+    if [[ ! -f ca/ca.cert.pem ]]; then
+        openssl req $AUTOMATE $CNF -extensions v3_ca \
+            -key private/ca.key.pem -new -out ca/ca.cert.pem \
+            -passin pass:password -sha256 -subj "$SUBJ" -x509
+    fi
+
+    if [[ ! -f ca/ca.cert.der ]] && [[ -f ca/ca.cert.pem ]]; then
+        openssl x509 -in ca/ca.cert.pem -inform pem \
+            -out ca/ca.cert.der -outform der
+    fi
+
+    fix_perms
+}
+
+create_dh() {
+    if [[ ! -f dh/dh2048.pem ]]; then
+        openssl dhparam -out dh/dh2048.pem 2048
+    fi
+
+    if [[ ! -f dh/dh2048.der ]] && [[ -f dh/dh2048.pem ]]; then
+        openssl dhparam -in dh/dh2048.pem -inform pem \
+            -out dh/dh2048.der -outform der
+    fi
+
+    fix_perms
+}
+
+create_cert() {
+    create_key $1.key
+
+    cert="$1.cert"
+
+    if [[ ! -f csr/$1.csr.pem ]]; then
+        openssl req $AUTOMATE $CNF -key private/$1.key.pem \
+            -new -out csr/$1.csr.pem -sha256
+    fi
+
+    if [[ ! -f certs/$cert.pem ]]; then
+        openssl ca $AUTOMATE $CNF -extensions ${2}_cert \
+            -in csr/$1.csr.pem -notext -out certs/$cert.pem
+    fi
+
+    if [[ ! -f certs/$cert.der ]] && [[ -f certs/$cert.pem ]]; then
+        openssl x509 -in certs/$cert.pem -inform pem \
+            -out certs/$cert.der -outform der
+    fi
+
+    rm -f *.old
+    for junk in $(ls certs | \grep -Ev "\.cert\.(der|pem)"); do
+        rm -f certs/$junk
+    done
+    find certs -size 0 -exec rm -f {} +
+
+    fix_perms
+}
+
+create_key() {
+    if [[ ! -f private/$1.pem ]]; then
+        openssl genrsa -out private/$1.pem -passout pass: 2048
+    fi
+
+    if [[ ! -f private/$1.der ]] && [[ -f private/$1.pem ]]; then
+        openssl pkcs8 -in private/$1.pem -inform pem \
+            -out private/$1.der -outform der -passout pass: -topk8
+    fi
+
+    fix_perms
+}
+
+fix_perms() {
+    find ca certs dh private -type d -exec chmod 700 {} +
+    find ca certs dh private -type f -exec chmod 400 {} +
+    chmod -R go-rwx .
+}
+
+setup() {
+    mkdir -p ca certs csr dh private
+    touch index.db index.db.attr
+    if [[ ! -f index.db.serial ]]; then
+        head -c 2 /dev/urandom | xxd -p >index.db.serial
+    fi
+    sed \
+        -e "s#TODO_HOST#$HOST#g" \
+        -e "s#TODO_IP#$IP#g" \
+        -e "s#TODO_PORT#$PORT#g" \
+        -e "s#TODO_CITY#$CITY#g" \
+        -e "s#TODO_CN#$CN#g" \
+        -e "s#TODO_COMPANY#$COMPANY#g" \
+        -e "s#TODO_COUNTRY#$COUNTRY#g" \
+        -e "s#TODO_STATE#$STATE#g" \
+        -e "s#TODO_UNIT#$UNIT#g" \
+        openssl_cnf >openssl.cnf
+}
+
+usage() {
+    echo "Usage: ./${0/*\//} [OPTIONS] [host1]...[hostN]"
+    echo "Options:"
+    echo "    --clean"
+    echo "        Clean up CA, certificates, and keys"
+    echo "    -c, --client"
+    echo "        Create client certificate"
+    echo "    --common-name"
+    echo "        Override the CN in params file"
+    echo "    --dh"
+    echo "        Create Diffie-Hellman parameters"
+    echo "    -h, --help"
+    echo "        Display this help message"
+    echo
+    exit $1
+}
+
+declare -a args
+action="server"
+unset common_name
+unset dh
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        "--") shift && args+=("$@") && break ;;
+        "--clean") action="clean" ;;
+        "-c"|"--client") action="client" ;;
+        "--common-name") shift; [[ $# -gt 0 ]] || usage 1
+            common_name="$1"
+            ;;
+        "--dh") dh="true" ;;
+        "-h"|"--help") usage 0 ;;
+        *) args+=("$1") ;;
+    esac
+    shift
+done
+[[ -z ${args[@]} ]] || set -- "${args[@]}"
+
+if [[ ! -f params ]]; then
+    echo "Copy params.sample to params and adjust as needed"
+    exit 1
+fi
+
+. params
+[[ -z $common_name ]] || CN="$common_name"
+
+AUTOMATE="-batch"
+CNF="-config openssl.cnf"
+SUBJ="/C=$COUNTRY/ST=$STATE/L=$CITY/O=$COMPANY/OU=$UNIT/CN=$CN"
+
+case "$action" in
+    "clean") rm -rf ca certs csr dh index.db* openssl.cnf private ;;
+    "client"|"server")
+        setup
+        create_ca
+        [[ -z $dh ]] || create_dh
+        for host in "$@"; do
+            create_cert $host $action
+        done
+        ;;
+esac

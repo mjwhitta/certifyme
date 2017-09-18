@@ -1,0 +1,12 @@
+# Adjust these values as needed
+
+HOST="exploit.com"
+IP="192.168.1.1"
+PORT="443"
+
+CITY="City name"
+CN="Self-signed CA"
+COMPANY="Company name"
+COUNTRY="US"
+STATE="State name"
+UNIT="Department"
