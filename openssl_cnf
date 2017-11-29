@@ -19,7 +19,7 @@ default_md = sha256
 
 name_opt = ca_default
 cert_opt = ca_default
-default_days = 5844
+default_days = TODO_CERTDAYS
 email_in_dn = no
 preserve = no
 policy = policy_string

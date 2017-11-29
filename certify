@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
 create_ca() {
-    setup "Self-signed CA"
+    setup "${CACN:-Self-signed CA}"
 
     create_key ca.key
 
     if [[ ! -f ca/ca.cert.pem ]]; then
-        openssl req $automate $config -days +11688 -extensions v3_ca \
-            -key private/ca.key.pem -new -out ca/ca.cert.pem \
-            -passin pass:password -sha256 -subj "/$subj" -x509
+        openssl req $automate $config -days +${CADAYS:-11688} \
+            -extensions v3_ca -key private/ca.key.pem -new \
+            -out ca/ca.cert.pem -passin pass:password -sha256 \
+            -subj "/$subj" -x509
     fi
 
     if [[ ! -f ca/ca.cert.der ]] && [[ -f ca/ca.cert.pem ]]; then
@@ -97,6 +98,7 @@ setup() {
     fi
 
     sed \
+        -e "s/TODO_CERTDAYS/${CERTDAYS:-5844}/g" \
         -e "s/TODO_CITY/\"${CITY:-delete}\"/g" \
         -e "s/TODO_CN/\"$1\"/g" \
         -e "s/TODO_COMPANY/\"${COMPANY:-delete}\"/g" \
