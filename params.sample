@@ -1,7 +1,7 @@
-# Adjust these values as needed
+# Adjust and uncomment these values as needed
 
-CITY="City name"
-COMPANY="Company name"
-COUNTRY="US"
-STATE="State name"
-UNIT="Department"
+# CITY="City name"
+# COMPANY="Company name"
+# COUNTRY="US"
+# STATE="State name"
+# UNIT="Department"

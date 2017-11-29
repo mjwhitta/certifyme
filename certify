@@ -6,9 +6,9 @@ create_ca() {
     create_key ca.key
 
     if [[ ! -f ca/ca.cert.pem ]]; then
-        openssl req $automate $config -extensions v3_ca \
+        openssl req $automate $config -days +11688 -extensions v3_ca \
             -key private/ca.key.pem -new -out ca/ca.cert.pem \
-            -passin pass:password -sha256 -subj "$SUBJ" -x509
+            -passin pass:password -sha256 -subj "/$subj" -x509
     fi
 
     if [[ ! -f ca/ca.cert.der ]] && [[ -f ca/ca.cert.pem ]]; then
@@ -83,8 +83,12 @@ fix_perms() {
 }
 
 setup() {
-    CN="$1"
-    SUBJ="/C=$COUNTRY/ST=$STATE/L=$CITY/O=$COMPANY/OU=$UNIT/CN=$CN"
+    subj="CN=$1"
+    [[ -z $UNIT ]] || subj="OU=$UNIT/$subj"
+    [[ -z $COMPANY ]] || subj="O=$COMPANY/$subj"
+    [[ -z $CITY ]] || subj="L=$CITY/$subj"
+    [[ -z $STATE ]] || subj="ST=$STATE/$subj"
+    [[ -z $COUNTRY ]] || subj="C=$COUNTRY/$subj"
 
     mkdir -p ca certs csr dh private
     touch index.db index.db.attr
@@ -93,15 +97,13 @@ setup() {
     fi
 
     sed \
-        -e "s#TODO_HOST#$HOST#g" \
-        -e "s#TODO_IP#$IP#g" \
-        -e "s#TODO_PORT#$PORT#g" \
-        -e "s#TODO_CITY#$CITY#g" \
-        -e "s#TODO_CN#$CN#g" \
-        -e "s#TODO_COMPANY#$COMPANY#g" \
-        -e "s#TODO_COUNTRY#$COUNTRY#g" \
-        -e "s#TODO_STATE#$STATE#g" \
-        -e "s#TODO_UNIT#$UNIT#g" \
+        -e "s/TODO_CITY/\"${CITY:-delete}\"/g" \
+        -e "s/TODO_CN/\"$1\"/g" \
+        -e "s/TODO_COMPANY/\"${COMPANY:-delete}\"/g" \
+        -e "s/TODO_COUNTRY/\"${COUNTRY:-delete}\"/g" \
+        -e "s/TODO_STATE/\"${STATE:-delete}\"/g" \
+        -e "s/TODO_UNIT/\"${UNIT:-delete}\"/g" \
+        -e "/delete/d" \
         openssl_cnf >.openssl.cnf
 }
 
@@ -109,7 +111,7 @@ usage() {
     echo "Usage: ./${0/*\//} [OPTIONS] [host1]...[hostN]"
     echo "Options:"
     echo "    --clean"
-    echo "        Clean up CA, certificates, and keys"
+    echo "        Clean up CA, certificates, dh params, and keys"
     echo "    -c, --client"
     echo "        Create client certificate"
     echo "    --dh"
@@ -137,12 +139,7 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -z ${args[@]} ]] || set -- "${args[@]}"
 
-if [[ ! -f params ]]; then
-    echo "Copy params.sample to params and adjust as needed"
-    exit 1
-fi
-
-. params
+[[ ! -f params ]] || . params
 
 automate="-batch"
 config="-config .openssl.cnf"

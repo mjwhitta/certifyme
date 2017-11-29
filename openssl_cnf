@@ -1,12 +1,5 @@
 # OpenSSL configuration file.
 
-city = TODO_CITY
-cn = TODO_CN
-company = TODO_COMPANY
-country = TODO_COUNTRY
-state = TODO_STATE
-unit = TODO_UNIT
-
 [ ca ]
 default_ca = CA_default
 
@@ -26,15 +19,15 @@ default_md = sha256
 
 name_opt = ca_default
 cert_opt = ca_default
-default_days = 365
+default_days = 5844
 email_in_dn = no
 preserve = no
 policy = policy_string
 
 [ policy_string ]
-countryName = match
-stateOrProvinceName = match
-organizationName = match
+countryName = optional
+stateOrProvinceName = optional
+organizationName = optional
 organizationalUnitName = optional
 commonName = supplied
 emailAddress = optional
@@ -58,25 +51,25 @@ default_md = sha256
 x509_extensions = v3_ca
 
 [ req_distinguished_name ]
-countryName = Country Name (2 letter code)
-countryName_default = $country
-countryName_min = 2
-countryName_max = 2
+countryName = Country Name (2 letter code) # TODO_COUNTRY
+countryName_default = TODO_COUNTRY
+countryName_min = 2 # TODO_COUNTRY
+countryName_max = 2 # TODO_COUNTRY
 
-stateOrProvinceName = State or Province Name (full name)
-stateOrProvinceName_default = $state
+stateOrProvinceName = State or Province Name (full name) # TODO_STATE
+stateOrProvinceName_default = TODO_STATE
 
-localityName = Locality Name (eg, city)
-localityName_default = $city
+localityName = Locality Name (eg, city) # TODO_CITY
+localityName_default = TODO_CITY
 
-0.organizationName = Organization Name (eg, company)
-0.organizationName_default = $company
+0.organizationName = Organization Name (eg, company) # TODO_COMPANY
+0.organizationName_default = TODO_COMPANY
 
-organizationalUnitName = Organizational Unit Name (eg, section)
-organizationalUnitName_default = $unit
+organizationalUnitName = Organizational Unit Name (eg, section) # TODO_UNIT
+organizationalUnitName_default = TODO_UNIT
 
 commonName = Common Name (FQDN for server certificates)
-commonName_default = $cn
+commonName_default = TODO_CN
 commonName_max = 64
 
 [ req_attributes ]
@@ -107,3 +100,5 @@ extendedKeyUsage = clientAuth, emailProtection
 
 [ additional_req ]
 subjectAltName = @additional_alt_names
+
+[ additional_alt_names ]
