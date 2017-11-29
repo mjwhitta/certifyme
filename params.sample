@@ -1,9 +1,5 @@
 # Adjust these values as needed
 
-HOST="exploit.com"
-IP="192.168.1.1"
-PORT="443"
-
 CITY="City name"
 COMPANY="Company name"
 COUNTRY="US"

@@ -1,9 +1,5 @@
 # OpenSSL configuration file.
 
-host = TODO_HOST
-ip = TODO_IP
-port = TODO_PORT
-
 city = TODO_CITY
 cn = TODO_CN
 company = TODO_COMPANY
@@ -111,6 +107,3 @@ extendedKeyUsage = clientAuth, emailProtection
 
 [ additional_req ]
 subjectAltName = @additional_alt_names
-
-[ additional_alt_names ]
-IP.1 = $ip
