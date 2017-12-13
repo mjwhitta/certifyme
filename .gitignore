@@ -2,6 +2,7 @@
 ca
 certs
 csr
+dh
 index.db*
 params
 private
