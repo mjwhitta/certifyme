@@ -102,3 +102,4 @@ extendedKeyUsage = clientAuth, emailProtection
 subjectAltName = @additional_alt_names
 
 [ additional_alt_names ]
+DNS.1 = TODO_CN

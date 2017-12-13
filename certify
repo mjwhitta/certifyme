@@ -8,8 +8,8 @@ create_ca() {
     if [[ ! -f ca/ca.cert.pem ]]; then
         openssl req $automate $config -days +${CADAYS:-11688} \
             -extensions v3_ca -key private/ca.key.pem -new \
-            -out ca/ca.cert.pem -passin pass:password -sha256 \
-            -subj "/$subj" -x509
+            -out ca/ca.cert.pem -passin pass:${CAPASS:-password} \
+            -sha256 -subj "/$subj" -x509
     fi
 
     if [[ ! -f ca/ca.cert.der ]] && [[ -f ca/ca.cert.pem ]]; then

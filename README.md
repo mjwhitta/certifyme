@@ -22,6 +22,8 @@ $ ./certify --dh
 $ ./certify --dh server1 server2 serverN
 ```
 
+**Note: Use the fqdn for server names**
+
 The root CA will be in `ca`, the client/server certificates are in
 `certs`, private keys are in `private`, and Diffie-Hellman parameters
 are in `dh`.
