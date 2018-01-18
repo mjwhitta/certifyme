@@ -1,5 +1,7 @@
 # Adjust and uncomment these values as needed
 
+## Certificate related params
+
 # CACN="Self-signed CA"
 # CADAYS=11688
 # CAPASS="password"
@@ -9,3 +11,7 @@
 # COUNTRY="US"
 # STATE="State name"
 # UNIT="Department"
+
+## certifyme related params
+
+# CREATE_DER="true"

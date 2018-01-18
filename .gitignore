@@ -2,7 +2,9 @@
 ca
 certs
 csr
+ders
 dh
 index.db*
 params
+pems
 private

@@ -2,7 +2,6 @@
 
 create_ca() {
     setup "${CACN:-Self-signed CA}"
-
     create_key ca.key
 
     if [[ ! -f ca/ca.cert.pem ]]; then
@@ -12,20 +11,27 @@ create_ca() {
             -sha256 -subj "/$subj" -x509
     fi
 
-    if [[ ! -f ca/ca.cert.der ]] && [[ -f ca/ca.cert.pem ]]; then
-        openssl x509 -in ca/ca.cert.pem -inform pem \
-            -out ca/ca.cert.der -outform der
+    if [[ -n $CREATE_DER ]]; then
+        if [[ ! -f ca/ca.cert.der ]] && [[ -f ca/ca.cert.pem ]]; then
+            openssl x509 -in ca/ca.cert.pem -inform pem \
+                -out ca/ca.cert.der -outform der
+        fi
     fi
 
     fix_perms
+
+    # Symlink files
+    ln -sf ca/ca.cert.pem pems/
+    [[ -z $CREATE_DER ]] || ln -sf ca/ca.cert.der ders/
 }
 
 create_cert() {
     setup "$1"
-
     create_key $1.key
-
     cert="$1.cert"
+
+    # Shouldn't have a csr and no certificate
+    [[ -f certs/$cert.pem ]] || rm -f csr/$1.csr.pem
 
     if [[ ! -f csr/$1.csr.pem ]]; then
         openssl req $automate $config -key private/$1.key.pem \
@@ -37,18 +43,26 @@ create_cert() {
             -in csr/$1.csr.pem -notext -out certs/$cert.pem
     fi
 
-    if [[ ! -f certs/$cert.der ]] && [[ -f certs/$cert.pem ]]; then
-        openssl x509 -in certs/$cert.pem -inform pem \
-            -out certs/$cert.der -outform der
+    if [[ -n $CREATE_DER ]]; then
+        if [[ ! -f certs/$cert.der ]] &&
+           [[ -f certs/$cert.pem ]]
+        then
+            openssl x509 -in certs/$cert.pem -inform pem \
+                -out certs/$cert.der -outform der
+        fi
     fi
 
     rm -f *.old
     for junk in $(ls certs | \grep -Ev "\.cert\.(der|pem)"); do
         rm -f certs/$junk
-    done
+    done; unset junk
     find certs -size 0 -exec rm -f {} +
 
     fix_perms
+
+    # Symlink files
+    ln -sf certs/$cert.pem pems/
+    [[ -z $CREATE_DER ]] || ln -sf certs/$cert.der ders/
 }
 
 create_dh() {
@@ -56,12 +70,18 @@ create_dh() {
         openssl dhparam -out dh/dh2048.pem 2048
     fi
 
-    if [[ ! -f dh/dh2048.der ]] && [[ -f dh/dh2048.pem ]]; then
-        openssl dhparam -in dh/dh2048.pem -inform pem \
-            -out dh/dh2048.der -outform der
+    if [[ -n $CREATE_DER ]]; then
+        if [[ ! -f dh/dh2048.der ]] && [[ -f dh/dh2048.pem ]]; then
+            openssl dhparam -in dh/dh2048.pem -inform pem \
+                -out dh/dh2048.der -outform der
+        fi
     fi
 
     fix_perms
+
+    # Symlink files
+    ln -sf dh/dh2048.pem pems/
+    [[ -z $CREATE_DER ]] || ln -sf dh/dh2048.der ders/
 }
 
 create_key() {
@@ -69,12 +89,18 @@ create_key() {
         openssl genrsa -out private/$1.pem -passout pass: 2048
     fi
 
-    if [[ ! -f private/$1.der ]] && [[ -f private/$1.pem ]]; then
-        openssl pkcs8 -in private/$1.pem -inform pem \
-            -out private/$1.der -outform der -passout pass: -topk8
+    if [[ -n $CREATE_DER ]]; then
+        if [[ ! -f private/$1.der ]] && [[ -f private/$1.pem ]]; then
+            openssl pkcs8 -in private/$1.pem -inform pem \
+                -out private/$1.der -outform der -passout pass: -topk8
+        fi
     fi
 
     fix_perms
+
+    # Symlink files
+    ln -sf private/$1.pem pems/
+    [[ -z $CREATE_DER ]] || ln -sf private/$1.der ders/
 }
 
 fix_perms() {
@@ -91,7 +117,8 @@ setup() {
     [[ -z $STATE ]] || subj="ST=$STATE/$subj"
     [[ -z $COUNTRY ]] || subj="C=$COUNTRY/$subj"
 
-    mkdir -p ca certs csr dh private
+    mkdir -p ca certs csr dh pems private
+    [[ -z $CREATE_DER ]] || mkdir -p ders
     touch index.db index.db.attr
     if [[ ! -f index.db.serial ]]; then
         head -c 2 /dev/urandom | xxd -p >index.db.serial
@@ -143,15 +170,21 @@ done
 
 [[ ! -f params ]] || . params
 
+case "${CREATE_DER:-true}" in
+    "T"|"t"|"True"|"true"|"Y"|"y"|"Yes"|"yes") CREATE_DER="true" ;;
+    *) unset CREATE_DER ;;
+esac
+
 automate="-batch"
 config="-config .openssl.cnf"
 
 case "$action" in
-    "clean") rm -rf ca certs csr dh index.db* .openssl.cnf private ;;
+    "clean")
+        rm -rf .openssl* ca certs csr ders dh index.db* pems private
+        ;;
     "client"|"server")
         create_ca
         [[ -z $dh ]] || create_dh
-
         for host in "$@"; do
             create_cert $host $action
         done; unset host
