@@ -136,17 +136,32 @@ setup() {
         openssl_cnf >.openssl.cnf
 }
 
+undo() {
+    [[ -f ca/ca.cert.pem ]] || return
+    [[ -f index.db ]] || return
+    rollback="$(tail -n 1 index.db | awk '{print $3,$5}')"
+    [[ -n $rollback ]] || return
+
+    # Rollback the index.db
+    serial="${rollback/ */}"
+    echo "$serial" >index.db.serial
+    sed -i -r "/\s+$serial\s+/d" index.db
+
+    # Remove certificate, csr, and key
+    host="$(echo "$rollback" | awk -F "=" '{print $NF}')"
+    rm -f */$host.*
+}
+
 usage() {
     echo "Usage: ./${0/*\//} [OPTIONS] [host1]...[hostN]"
     echo "Options:"
-    echo "    --clean"
-    echo "        Clean up CA, certificates, dh params, and keys"
-    echo "    -c, --client"
-    echo "        Create client certificate"
-    echo "    --dh"
-    echo "        Create Diffie-Hellman parameters"
-    echo "    -h, --help"
-    echo "        Display this help message"
+    echo "    --clean         Clean up CA, certificates, dh params,"
+    echo "                    and keys"
+    echo "    -c, --client    Create client certificate"
+    echo "    --dh            Create Diffie-Hellman parameters"
+    echo "    -h, --help      Display this help message"
+    echo "    -u, --undo      Rollback most recently generated"
+    echo "                    certificate"
     echo
     exit $1
 }
@@ -162,6 +177,7 @@ while [[ $# -gt 0 ]]; do
         "-c"|"--client") action="client" ;;
         "--dh") dh="true" ;;
         "-h"|"--help") usage 0 ;;
+        "-u"|"--undo") action="undo" ;;
         *) args+=("$1") ;;
     esac
     shift
@@ -189,4 +205,5 @@ case "$action" in
             create_cert $host $action
         done; unset host
         ;;
+    "undo") undo ;;
 esac
