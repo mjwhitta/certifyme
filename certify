@@ -21,8 +21,8 @@ create_ca() {
     fix_perms
 
     # Symlink files
-    ln -sf ca/ca.cert.pem pems/
-    [[ -z $CREATE_DER ]] || ln -sf ca/ca.cert.der ders/
+    ln -sf ../ca/ca.cert.pem pems/
+    [[ -z $CREATE_DER ]] || ln -sf ../ca/ca.cert.der ders/
 }
 
 create_cert() {
@@ -61,8 +61,8 @@ create_cert() {
     fix_perms
 
     # Symlink files
-    ln -sf certs/$cert.pem pems/
-    [[ -z $CREATE_DER ]] || ln -sf certs/$cert.der ders/
+    ln -sf ../certs/$cert.pem pems/
+    [[ -z $CREATE_DER ]] || ln -sf ../certs/$cert.der ders/
 }
 
 create_dh() {
@@ -80,8 +80,8 @@ create_dh() {
     fix_perms
 
     # Symlink files
-    ln -sf dh/dh2048.pem pems/
-    [[ -z $CREATE_DER ]] || ln -sf dh/dh2048.der ders/
+    ln -sf ../dh/dh2048.pem pems/
+    [[ -z $CREATE_DER ]] || ln -sf ../dh/dh2048.der ders/
 }
 
 create_key() {
@@ -99,8 +99,8 @@ create_key() {
     fix_perms
 
     # Symlink files
-    ln -sf private/$1.pem pems/
-    [[ -z $CREATE_DER ]] || ln -sf private/$1.der ders/
+    ln -sf ../private/$1.pem pems/
+    [[ -z $CREATE_DER ]] || ln -sf ../private/$1.der ders/
 }
 
 fix_perms() {
