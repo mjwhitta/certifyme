@@ -109,6 +109,23 @@ fix_perms() {
     chmod -R go-rwx .
 }
 
+remove_from_db() {
+    [[ $# -eq 1 ]] || return 0
+    host="$1"
+    [[ -f ca/ca.cert.pem ]] || return 0
+    [[ -f index.db ]] || return 0
+    remove="$(\grep -m 1 "/CN=$host" index.db | awk '{print $3,$5}')"
+    [[ -n $remove ]] || return 0
+
+    # Update the index.db
+    serial="${remove/ */}"
+    sed -i -r "/\s+$serial\s+/d" index.db
+
+    # Remove certificate, csr, and key
+    host="$(echo "$remove" | awk -F "=" '{print $NF}')"
+    rm -f */$host.*
+}
+
 setup() {
     subj="CN=$1"
     [[ -z $UNIT ]] || subj="OU=$UNIT/$subj"
@@ -155,11 +172,12 @@ undo() {
 usage() {
     echo "Usage: ./${0/*\//} [OPTIONS] [host1]...[hostN]"
     echo "Options:"
-    echo "    --clean         Clean up CA, certificates, dh params,"
+    echo "    --clean         Clean up CA, certificates, dh params"
     echo "                    and keys"
     echo "    -c, --client    Create client certificate"
     echo "    --dh            Create Diffie-Hellman parameters"
     echo "    -h, --help      Display this help message"
+    echo "    --rm=HOST       Remove a certificate (does NOT revoke)"
     echo "    -u, --undo      Rollback most recently generated"
     echo "                    certificate"
     echo
@@ -168,7 +186,7 @@ usage() {
 
 declare -a args
 action="server"
-unset dh
+unset dh remove
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -177,6 +195,17 @@ while [[ $# -gt 0 ]]; do
         "-c"|"--client") action="client" ;;
         "--dh") dh="true" ;;
         "-h"|"--help") usage 0 ;;
+        "--rm"*)
+            case "$1" in
+                "--"*"="*)
+                    arg="$(echo "$1" | sed -r "s/[^=]+=//")"
+                    [[ -n $arg ]] || usage 1
+                    ;;
+                *) shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
+            esac
+            action="remove"
+            remove="$arg"
+            ;;
         "-u"|"--undo") action="undo" ;;
         *) args+=("$1") ;;
     esac
@@ -205,5 +234,6 @@ case "$action" in
             create_cert $host $action
         done; unset host
         ;;
+    "remove") remove_from_db $remove ;;
     "undo") undo ;;
 esac
