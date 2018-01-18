@@ -137,10 +137,10 @@ setup() {
 }
 
 undo() {
-    [[ -f ca/ca.cert.pem ]] || return
-    [[ -f index.db ]] || return
+    [[ -f ca/ca.cert.pem ]] || return 0
+    [[ -f index.db ]] || return 0
     rollback="$(tail -n 1 index.db | awk '{print $3,$5}')"
-    [[ -n $rollback ]] || return
+    [[ -n $rollback ]] || return 0
 
     # Rollback the index.db
     serial="${rollback/ */}"
