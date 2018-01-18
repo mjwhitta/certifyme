@@ -150,7 +150,7 @@ setup() {
         -e "s/TODO_STATE/\"${STATE:-delete}\"/g" \
         -e "s/TODO_UNIT/\"${UNIT:-delete}\"/g" \
         -e "/delete/d" \
-        openssl_cnf >.openssl.cnf
+        $certifyme/openssl.cnf >$certifyme/.openssl.cnf
 }
 
 undo() {
@@ -172,14 +172,15 @@ undo() {
 usage() {
     echo "Usage: ./${0/*\//} [OPTIONS] [host1]...[hostN]"
     echo "Options:"
-    echo "    --clean         Clean up CA, certificates, dh params"
-    echo "                    and keys"
-    echo "    -c, --client    Create client certificate"
-    echo "    --dh            Create Diffie-Hellman parameters"
-    echo "    -h, --help      Display this help message"
-    echo "    --rm=HOST       Remove a certificate (does NOT revoke)"
-    echo "    -u, --undo      Rollback most recently generated"
-    echo "                    certificate"
+    echo "    --clean          Clean up CA, certificates, dh params"
+    echo "                     and keys"
+    echo "    -c, --client     Create client certificate"
+    echo "    --dh             Create Diffie-Hellman parameters"
+    echo "    -h, --help       Display this help message"
+    echo "    -p, --pki=DIR    Use specified params file"
+    echo "    --rm=HOST        Remove a certificate (does NOT revoke)"
+    echo "    -u, --undo       Rollback most recently generated"
+    echo "                     certificate"
     echo
     exit $1
 }
@@ -187,6 +188,7 @@ usage() {
 declare -a args
 action="server"
 unset dh remove
+pki="."
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -195,6 +197,16 @@ while [[ $# -gt 0 ]]; do
         "-c"|"--client") action="client" ;;
         "--dh") dh="true" ;;
         "-h"|"--help") usage 0 ;;
+        "-p"|"--pki"*)
+            case "$1" in
+                "--"*"="*)
+                    arg="$(echo "$1" | sed -r "s/[^=]+=//")"
+                    [[ -n $arg ]] || usage 1
+                    ;;
+                *) shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
+            esac
+            pki="$arg"
+            ;;
         "--rm"*)
             case "$1" in
                 "--"*"="*)
@@ -213,6 +225,9 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -z ${args[@]} ]] || set -- "${args[@]}"
 
+certifyme="$(pwd)"
+cd $pki
+
 [[ ! -f params ]] || . params
 
 case "${CREATE_DER:-true}" in
@@ -221,11 +236,12 @@ case "${CREATE_DER:-true}" in
 esac
 
 automate="-batch"
-config="-config .openssl.cnf"
+config="-config $certifyme/.openssl.cnf"
 
 case "$action" in
     "clean")
-        rm -rf .openssl* ca certs csr ders dh index.db* pems private
+        rm -rf $certifyme/.openssl* ca certs csr ders dh index.db* \
+            pems private
         ;;
     "client"|"server")
         create_ca

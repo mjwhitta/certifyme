@@ -7,4 +7,5 @@ dh
 index.db*
 params
 pems
+pki
 private
