@@ -177,7 +177,8 @@ usage() {
     echo "    -c, --client     Create client certificate"
     echo "    --dh             Create Diffie-Hellman parameters"
     echo "    -h, --help       Display this help message"
-    echo "    -p, --pki=DIR    Use specified params file"
+    echo "    -p, --pki=DIR    Use specified directory for PKI, put"
+    echo "                     certifyme params there (default: $pki)"
     echo "    --rm=HOST        Remove a certificate (does NOT revoke)"
     echo "    -u, --undo       Rollback most recently generated"
     echo "                     certificate"
@@ -225,7 +226,12 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -z ${args[@]} ]] || set -- "${args[@]}"
 
-certifyme="$(pwd)"
+case "$0" in
+    "./certify") certifyme="$(pwd)" ;;
+    *) certifyme="INSTALL_DIR" ;;
+esac
+
+# Operate from with-in PKI directory
 cd $pki
 
 [[ ! -f params ]] || . params
