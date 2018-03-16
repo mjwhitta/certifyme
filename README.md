@@ -13,13 +13,14 @@ $ ./certify
 $ ./certify server1 server2 serverN
 
 # Create client certs
-$ ./certify --client client1 client2 clientN
+$ ./certify --client client1 --client client2 --client clientN
 
 # Create Diffie-Hellman parameters
 $ ./certify --dh
 
-# Create CA, server certs, and Diffie-Hellman params all-in-one
-$ ./certify --dh server1 server2 serverN
+# Create CA, client certs, Diffie-Hellman params, and server certs
+# all-in-one
+$ ./certify -c client1 -c clientN --dh server1 serverN
 ```
 
 **Note: Use the fqdn for server names**

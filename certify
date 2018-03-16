@@ -172,22 +172,25 @@ undo() {
 usage() {
     echo "Usage: ./${0/*\//} [OPTIONS] [host1]...[hostN]"
     echo "Options:"
-    echo "    --clean          Clean up CA, certificates, dh params"
-    echo "                     and keys"
-    echo "    -c, --client     Create client certificate"
-    echo "    --dh             Create Diffie-Hellman parameters"
-    echo "    -h, --help       Display this help message"
-    echo "    -p, --pki=DIR    Use specified directory for PKI, put"
-    echo "                     certifyme params there (default: $pki)"
-    echo "    --rm=HOST        Remove a certificate (does NOT revoke)"
-    echo "    -u, --undo       Rollback most recently generated"
-    echo "                     certificate"
+    echo "    --clean              Clean up CA, certificates, dh"
+    echo "                         params and keys"
+    echo "    -c, --client=HOST    Create client certificate (can be"
+    echo "                         used more than once)"
+    echo "    --dh                 Create Diffie-Hellman parameters"
+    echo "    -h, --help           Display this help message"
+    echo "    -p, --pki=DIR        Use specified directory for PKI,"
+    echo "                         put certifyme params there"
+    echo "                         (default: $pki)"
+    echo "    --rm=HOST            Remove a certificate (does NOT"
+    echo "                         revoke)"
+    echo "    -u, --undo           Rollback most recently generated"
+    echo "                         certificate"
     echo
     exit $1
 }
 
-declare -a args
-action="server"
+declare -a args clients
+action="generate"
 unset dh remove
 pki="."
 
@@ -195,7 +198,13 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         "--") shift && args+=("$@") && break ;;
         "--clean") action="clean" ;;
-        "-c"|"--client") action="client" ;;
+        "-c"|"--client"*)
+            case "$1" in
+                "--"*"="*) arg="${1#*=}"; [[ -n $arg ]] || usage 1 ;;
+                *) shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
+            esac
+            clients+=("$arg")
+            ;;
         "--dh") dh="true" ;;
         "-h"|"--help") usage 0 ;;
         "-p"|"--pki"*)
@@ -232,6 +241,7 @@ case "$0" in
 esac
 
 # Operate from with-in PKI directory
+mkdir -p $pki
 cd $pki
 
 [[ ! -f params ]] || . params
@@ -249,11 +259,14 @@ case "$action" in
         rm -rf $certifyme/.openssl* ca certs csr ders dh index.db* \
             pems private
         ;;
-    "client"|"server")
+    "generate")
         create_ca
         [[ -z $dh ]] || create_dh
+        for client in "${clients[@]}"; do
+            create_cert $client "client"
+        done; unset client
         for host in "$@"; do
-            create_cert $host $action
+            create_cert $host "server"
         done; unset host
         ;;
     "remove") remove_from_db $remove ;;
