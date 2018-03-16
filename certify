@@ -240,6 +240,8 @@ case "$0" in
     *) certifyme="INSTALL_DIR" ;;
 esac
 
+[[ -d $certifyme ]] || usage 2
+
 # Operate from with-in PKI directory
 mkdir -p $pki
 cd $pki
