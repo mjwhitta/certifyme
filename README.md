@@ -28,3 +28,6 @@ $ ./certify -c client1 -c clientN --dh server1 serverN
 The root CA will be in `ca`, the client/server certificates are in
 `certs`, private keys are in `private`, and Diffie-Hellman parameters
 are in `dh`.
+
+**Note: If using the `--pki` flag, the `params` file must be in the
+specified directory**
