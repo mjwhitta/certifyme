@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 
+clean_pki() {
+    warn "Wiping PKI"
+    rm -rf ca certs csr ders dh index.db* pems private
+}
+
 create_ca() {
     setup "${CACN:-Self-signed CA}"
     create_key ca.key
 
     if [[ ! -f ca/ca.cert.pem ]]; then
+        info "Generating ca.cert.pem"
         openssl req $automate $config -days +${CADAYS:-11688} \
             -extensions v3_ca -key private/ca.key.pem -new \
             -out ca/ca.cert.pem -passin pass:${CAPASS:-password} \
@@ -13,6 +19,7 @@ create_ca() {
 
     if [[ -n $CREATE_DER ]]; then
         if [[ ! -f ca/ca.cert.der ]] && [[ -f ca/ca.cert.pem ]]; then
+            info "Generating ca.cert.der"
             openssl x509 -in ca/ca.cert.pem -inform pem \
                 -out ca/ca.cert.der -outform der
         fi
@@ -47,11 +54,13 @@ create_cert() {
     [[ -f certs/$cert.pem ]] || rm -f csr/$csr.pem
 
     if [[ ! -f csr/$csr.pem ]]; then
+        info "Generating $csr.pem"
         openssl req $automate $config -key private/$key.pem \
             -new -out csr/$csr.pem -sha256
     fi
 
     if [[ ! -f certs/$cert.pem ]]; then
+        info "Generating $cert.pem"
         openssl ca $automate $config -extensions ${2}_cert \
             -in csr/$csr.pem -notext -out certs/$cert.pem
     fi
@@ -60,6 +69,7 @@ create_cert() {
         if [[ ! -f certs/$cert.der ]] &&
            [[ -f certs/$cert.pem ]]
         then
+            info "Generating $cert.der"
             openssl x509 -in certs/$cert.pem -inform pem \
                 -out certs/$cert.der -outform der
         fi
@@ -80,11 +90,13 @@ create_cert() {
 
 create_dh() {
     if [[ ! -f dh/dh2048.pem ]]; then
+        info "Generating dh2048.pem"
         openssl dhparam -out dh/dh2048.pem 2048
     fi
 
     if [[ -n $CREATE_DER ]]; then
         if [[ ! -f dh/dh2048.der ]] && [[ -f dh/dh2048.pem ]]; then
+            info "Generating dh2048.der"
             openssl dhparam -in dh/dh2048.pem -inform pem \
                 -out dh/dh2048.der -outform der
         fi
@@ -99,11 +111,13 @@ create_dh() {
 
 create_key() {
     if [[ ! -f private/$1.pem ]]; then
+        info "Generating $1.pem"
         openssl genrsa -out private/$1.pem -passout pass: 2048
     fi
 
     if [[ -n $CREATE_DER ]]; then
         if [[ ! -f private/$1.der ]] && [[ -f private/$1.pem ]]; then
+            info "Generating $1.der"
             openssl pkcs8 -in private/$1.pem -inform pem \
                 -out private/$1.der -outform der -passout pass: -topk8
         fi
@@ -116,7 +130,7 @@ create_key() {
     [[ -z $CREATE_DER ]] || ln -sf ../private/$1.der ders/
 }
 
-err() { echo -e "\e[31m${2}\e[0m"; exit $1; }
+err() { echo -e "\e[31m[!] ${2}\e[0m"; exit $1; }
 
 fix_perms() {
     find ca certs dh private -type d -exec chmod 700 {} +
@@ -124,15 +138,16 @@ fix_perms() {
     chmod -R go-rwx .
 }
 
-info() { echo -e "\e[37m${@}\e[0m"; }
+info() { echo -e "\e[37m[+] ${@}\e[0m"; }
 
 remove_from_db() {
     [[ $# -eq 1 ]] || return 0
-    host="$1"
     [[ -f ca/ca.cert.pem ]] || return 0
     [[ -f index.db ]] || return 0
-    remove="$(\grep -m 1 "/CN=$host" index.db | awk '{print $3,$5}')"
+    remove="$(\grep -m 1 "/CN=$1" index.db | awk '{print $3,$5}')"
     [[ -n $remove ]] || return 0
+
+    warn "Removing $1 from the database"
 
     # Update the index.db
     serial="${remove/ */}"
@@ -176,13 +191,15 @@ undo() {
     rollback="$(tail -n 1 index.db | awk '{print $3,$5}')"
     [[ -n $rollback ]] || return 0
 
+    host="$(echo "$rollback" | awk -F "=" '{print $NF}')"
+    warn "Rolling back database prior to $host"
+
     # Rollback the index.db
     serial="${rollback/ */}"
     echo "$serial" >index.db.serial
     sed -i -r "/\s+$serial\s+/d" index.db
 
     # Remove certificate, csr, and key
-    host="$(echo "$rollback" | awk -F "=" '{print $NF}')"
     rm -f */$host.*
 }
 
@@ -206,6 +223,8 @@ usage() {
     echo
     exit $1
 }
+
+warn() { echo -e "\e[33m[-] ${@}\e[0m"; }
 
 declare -a args clients
 action="generate"
@@ -379,7 +398,7 @@ DNS.1 = TODO_CN
 EOF
 
 case "$action" in
-    "clean") rm -rf ca certs csr ders dh index.db* pems private ;;
+    "clean") clean_pki ;;
     "generate")
         create_ca
         [[ -z $dh ]] || create_dh
