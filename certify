@@ -163,7 +163,7 @@ setup() {
         -e "s/TODO_STATE/\"${STATE:-delete}\"/g" \
         -e "s/TODO_UNIT/\"${UNIT:-delete}\"/g" \
         -e "/delete/d" \
-        $certifyme/openssl.cnf >$certifyme/.openssl.cnf
+        $cfg >certifyme.openssl.cnf
 }
 
 undo() {
@@ -248,13 +248,6 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -z ${args[@]} ]] || set -- "${args[@]}"
 
-case "$0" in
-    "./certify") certifyme="$(pwd)" ;;
-    *) certifyme="INSTALL_DIR" ;;
-esac
-
-[[ -d $certifyme ]] || usage 2
-
 # Operate from with-in PKI directory
 mkdir -p $pki
 cd $pki
@@ -267,13 +260,118 @@ case "${CREATE_DER:-true}" in
 esac
 
 automate="-batch"
-config="-config $certifyme/.openssl.cnf"
+cfg="/tmp/certifyme.openssl.cnf"
+config="-config certifyme.openssl.cnf"
+
+cat >$cfg <<EOF
+# OpenSSL configuration file.
+
+dir = .
+
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+certs = \$dir/certs
+new_certs_dir = \$dir/certs
+database = \$dir/index.db
+serial = \$dir/index.db.serial
+RANDFILE = \$dir/private/.rand
+
+certificate = \$dir/ca/ca.cert.pem
+private_key = \$dir/private/ca.key.pem
+
+default_md = sha256
+
+name_opt = CA_default
+cert_opt = CA_default
+default_days = TODO_CERTDAYS
+email_in_dn = no
+preserve = no
+policy = policy_string
+
+[ policy_string ]
+countryName = optional
+stateOrProvinceName = optional
+organizationName = optional
+organizationalUnitName = optional
+commonName = supplied
+emailAddress = optional
+
+[ policy_any ]
+countryName = optional
+stateOrProvinceName = optional
+localityName = optional
+organizationName = optional
+organizationalUnitName = optional
+commonName = supplied
+emailAddress = optional
+
+[ req ]
+default_bits = 2048
+distinguished_name = req_distinguished_name
+string_mask = utf8only
+
+default_md = sha256
+
+x509_extensions = v3_ca
+
+[ req_distinguished_name ]
+countryName = Country Name (2 letter code) # TODO_COUNTRY
+countryName_default = TODO_COUNTRY
+countryName_min = 2 # TODO_COUNTRY
+countryName_max = 2 # TODO_COUNTRY
+
+stateOrProvinceName = State or Province Name (full name) # TODO_STATE
+stateOrProvinceName_default = TODO_STATE
+
+localityName = Locality Name (eg, city) # TODO_CITY
+localityName_default = TODO_CITY
+
+0.organizationName = Organization Name (eg, company) # TODO_COMPANY
+0.organizationName_default = TODO_COMPANY
+
+organizationalUnitName = Organizational Unit Name (eg, section) # TODO_UNIT
+organizationalUnitName_default = TODO_UNIT
+
+commonName = Common Name (FQDN for server certificates)
+commonName_default = TODO_CN
+commonName_max = 64
+
+[ req_attributes ]
+
+[ v3_ca ]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+[ server_cert ]
+basicConstraints = CA:false
+nsCertType = server
+nsComment = "OpenSSL genereated server certificate"
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @subject_alt_names
+
+[ client_cert ]
+basicConstraints = CA:false
+nsCertType = client, email
+nsComment = "OpenSSL genereated client certificate"
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = critical, digitalSignature, keyEncipherment, nonRepudiation
+extendedKeyUsage = clientAuth, emailProtection
+subjectAltName = @subject_alt_names
+
+[ subject_alt_names ]
+DNS.1 = TODO_CN
+EOF
 
 case "$action" in
-    "clean")
-        rm -rf $certifyme/.openssl* ca certs csr ders dh index.db* \
-            pems private
-        ;;
+    "clean") rm -rf ca certs csr ders dh index.db* pems private ;;
     "generate")
         create_ca
         [[ -z $dh ]] || create_dh
@@ -287,3 +385,5 @@ case "$action" in
     "remove") remove_from_db $remove ;;
     "undo") undo ;;
 esac
+
+rm -f $cfg certifyme.openssl.cnf
