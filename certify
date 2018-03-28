@@ -27,20 +27,33 @@ create_ca() {
 
 create_cert() {
     setup "$1"
-    create_key $1.key
-    cert="$1.cert"
+
+    case "$2" in
+        "client")
+            cert="$1.client.cert"
+            csr="$1.client.csr"
+            key="$1.client.key"
+            ;;
+        *)
+            cert="$1.cert"
+            csr="$1.csr"
+            key="$1.key"
+            ;;
+    esac
+
+    create_key $key
 
     # Shouldn't have a csr and no certificate
-    [[ -f certs/$cert.pem ]] || rm -f csr/$1.csr.pem
+    [[ -f certs/$cert.pem ]] || rm -f csr/$csr.pem
 
-    if [[ ! -f csr/$1.csr.pem ]]; then
-        openssl req $automate $config -key private/$1.key.pem \
-            -new -out csr/$1.csr.pem -sha256
+    if [[ ! -f csr/$csr.pem ]]; then
+        openssl req $automate $config -key private/$key.pem \
+            -new -out csr/$csr.pem -sha256
     fi
 
     if [[ ! -f certs/$cert.pem ]]; then
         openssl ca $automate $config -extensions ${2}_cert \
-            -in csr/$1.csr.pem -notext -out certs/$cert.pem
+            -in csr/$csr.pem -notext -out certs/$cert.pem
     fi
 
     if [[ -n $CREATE_DER ]]; then
@@ -176,12 +189,12 @@ usage() {
     echo "                         params and keys"
     echo "    -c, --client=HOST    Create client certificate (can be"
     echo "                         used more than once)"
-    echo "    --dh                 Create Diffie-Hellman parameters"
+    echo "    -d, --dh             Create Diffie-Hellman parameters"
     echo "    -h, --help           Display this help message"
     echo "    -p, --pki=DIR        Use specified directory for PKI,"
     echo "                         put certifyme params there"
     echo "                         (default: $pki)"
-    echo "    --rm=HOST            Remove a certificate (does NOT"
+    echo "    -r, --rm=HOST        Remove a certificate (does NOT"
     echo "                         revoke)"
     echo "    -u, --undo           Rollback most recently generated"
     echo "                         certificate"
@@ -205,7 +218,7 @@ while [[ $# -gt 0 ]]; do
             esac
             clients+=("$arg")
             ;;
-        "--dh") dh="true" ;;
+        "-d"|"--dh") dh="true" ;;
         "-h"|"--help") usage 0 ;;
         "-p"|"--pki"*)
             case "$1" in
@@ -217,7 +230,7 @@ while [[ $# -gt 0 ]]; do
             esac
             pki="$arg"
             ;;
-        "--rm"*)
+        "-r"|"--rm"*)
             case "$1" in
                 "--"*"="*)
                     arg="$(echo "$1" | sed -r "s/[^=]+=//")"
