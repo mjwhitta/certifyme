@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 
-clean_pki() {
-    warn "Wiping PKI"
-    rm -rf ca certs csr ders dh index.db* pems private
-}
-
 create_ca() {
     setup "${CACN:-Self-signed CA}"
     create_key ca.key
@@ -206,8 +201,6 @@ undo() {
 usage() {
     echo "Usage: ./${0/*\//} [OPTIONS] [host1]...[hostN]"
     echo "Options:"
-    echo "    --clean              Clean up CA, certificates, dh"
-    echo "                         params and keys"
     echo "    -c, --client=HOST    Create client certificate (can be"
     echo "                         used more than once)"
     echo "    -d, --dh             Create Diffie-Hellman parameters"
@@ -220,11 +213,18 @@ usage() {
     echo "    --sample-params      Generate sample params file"
     echo "    -u, --undo           Rollback most recently generated"
     echo "                         certificate"
+    echo "    -w, --wipe           Wipe CA, certificates, dh params"
+    echo "                         and keys"
     echo
     exit $1
 }
 
 warn() { echo -e "\e[33m[-] ${@}\e[0m"; }
+
+wipe_pki() {
+    warn "Wiping PKI"
+    rm -rf ca certs csr ders dh index.db* pems private
+}
 
 declare -a args clients
 action="generate"
@@ -234,7 +234,6 @@ pki="."
 while [[ $# -gt 0 ]]; do
     case "$1" in
         "--") shift && args+=("$@") && break ;;
-        "--clean") action="clean" ;;
         "-c"|"--client"*)
             case "$1" in
                 "--"*"="*) arg="${1#*=}"; [[ -n $arg ]] || usage 1 ;;
@@ -267,6 +266,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         "--sample-params") action="params" ;;
         "-u"|"--undo") action="undo" ;;
+        "-w"|"--wipe") action="wipe" ;;
         *) args+=("$1") ;;
     esac
     shift
@@ -398,7 +398,6 @@ DNS.1 = TODO_CN
 EOF
 
 case "$action" in
-    "clean") clean_pki ;;
     "generate")
         create_ca
         [[ -z $dh ]] || create_dh
@@ -430,6 +429,7 @@ case "$action" in
         ;;
     "remove") remove_from_db $remove ;;
     "undo") undo ;;
+    "wipe") wipe_pki ;;
 esac
 
 rm -f $cfg certifyme.openssl.cnf

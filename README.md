@@ -42,6 +42,12 @@ The root CA will be in `ca`, the client/server certificates are in
 `certs`, private keys are in `private`, and Diffie-Hellman parameters
 are in `dh`.
 
+To wipe a PKI and start over use the following command:
+
+```
+$ certify --wipe
+```
+
 ## Installation
 
 You can install the `certify` script to `/usr/local/bin` with the
