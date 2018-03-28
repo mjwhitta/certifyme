@@ -196,6 +196,7 @@ usage() {
     echo "                         (default: $pki)"
     echo "    -r, --rm=HOST        Remove a certificate (does NOT"
     echo "                         revoke)"
+    echo "    --sample-params      Generate sample params file"
     echo "    -u, --undo           Rollback most recently generated"
     echo "                         certificate"
     echo
@@ -241,6 +242,7 @@ while [[ $# -gt 0 ]]; do
             action="remove"
             remove="$arg"
             ;;
+        "--sample-params") action="params" ;;
         "-u"|"--undo") action="undo" ;;
         *) args+=("$1") ;;
     esac
@@ -381,6 +383,25 @@ case "$action" in
         for host in "$@"; do
             create_cert $host "server"
         done; unset host
+        ;;
+    "params")
+        echo "# Adjust and uncomment these values as needed"
+        echo
+        echo "## Certificate related params"
+        echo
+        echo "# CACN=\"Self-signed CA\""
+        echo "# CADAYS=11688"
+        echo "# CAPASS=\"password\""
+        echo "# CERTDAYS=5844"
+        echo "# CITY=\"City name\""
+        echo "# COMPANY=\"Company name\""
+        echo "# COUNTRY=\"US\""
+        echo "# STATE=\"State name\""
+        echo "# UNIT=\"Department\""
+        echo
+        echo "## certifyme related params"
+        echo
+        echo "# CREATE_DER=\"true\""
         ;;
     "remove") remove_from_db $remove ;;
     "undo") undo ;;

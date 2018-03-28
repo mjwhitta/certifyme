@@ -1,9 +1,22 @@
 # CertifyMe
 
 This tool is for quickly generating a root CA and client/server
-certificates. To use this tool, copy `params.sample` to `params` and
-then edit the variables in it to fit your needs. Certificates can be
-created with the following commands:
+certificates.
+
+## Usage
+
+To use this tool, generate a `params` file:
+
+```
+$ certify --sample-params >params
+```
+
+and then edit the variables to fit your needs.
+
+**Note: If using the `--pki` flag, the `params` file must be in the
+specified directory**
+
+Certificates can be created with the following commands:
 
 ```
 # Creates a CA if it doesn't already exist
@@ -37,6 +50,3 @@ following command:
 ```
 $ ./installer
 ```
-
-**Note: If using the `--pki` flag, the `params` file must be in the
-specified directory**
