@@ -35,7 +35,7 @@ create_ca() {
 
     if [[ ! -f ca/ca.cert.pem ]]; then
         info "Generating ca.cert.pem"
-        openssl req $automate $config -days +${CADAYS:-11688} \
+        openssl req -batch $sslcnf -days +${CADAYS:-11688} \
             -extensions v3_ca -key private/ca.key.pem -new \
             -out ca/ca.cert.pem -passin pass:${CAPASS:-password} \
             -sha256 -subj "/$subj" -x509
@@ -79,13 +79,13 @@ create_cert() {
 
     if [[ ! -f csr/$csr.pem ]]; then
         info "Generating $csr.pem"
-        openssl req $automate $config -key private/$key.pem \
+        openssl req -batch $sslcnf -key private/$key.pem \
             -new -out csr/$csr.pem -sha256
     fi
 
     if [[ ! -f certs/$cert.pem ]]; then
         info "Generating $cert.pem"
-        openssl ca $automate $config -extensions ${2}_cert \
+        openssl ca -batch $sslcnf -extensions ${2}_cert \
             -in csr/$csr.pem -notext -out certs/$cert.pem
     fi
 
@@ -206,7 +206,7 @@ setup() {
         -e "s/TODO_STATE/\"${STATE:-delete}\"/g" \
         -e "s/TODO_UNIT/\"${UNIT:-delete}\"/g" \
         -e "/delete/d" \
-        $cfg >certifyme.openssl.cnf
+        $tmpcnf >certifyme.openssl.cnf
 }
 
 undo() {
@@ -232,14 +232,15 @@ usage() {
     echo "Options:"
     echo "    -c, --client=HOST    Create client certificate (can be"
     echo "                         used more than once)"
+    echo "    --conf=CONFIG        Use the specified certifyme.conf"
+    echo "                         (default: $pki/certifyme.conf)"
     echo "    -d, --dh             Create Diffie-Hellman parameters"
     echo "    -h, --help           Display this help message"
-    echo "    -p, --pki=DIR        Use specified directory for PKI,"
-    echo "                         put certifyme params there"
+    echo "    -p, --pki=DIR        Use specified directory for PKI"
     echo "                         (default: $pki)"
     echo "    -r, --rm=HOST        Remove a certificate (does NOT"
     echo "                         revoke)"
-    echo "    --sample-params      Generate sample params file"
+    echo "    --sample-config      Generate sample certifyme.conf"
     echo "    -u, --undo           Rollback most recently generated"
     echo "                         certificate"
     echo "    -w, --wipe           Wipe CA, certificates, dh params"
@@ -256,9 +257,11 @@ wipe_pki() {
 }
 
 declare -a args clients
+unset config dh remove
 action="generate"
-unset dh remove
 pki="."
+sslcnf="-config certifyme.openssl.cnf"
+tmpcnf="/tmp/certifyme.openssl.cnf"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -269,6 +272,16 @@ while [[ $# -gt 0 ]]; do
                 *) shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
             esac
             clients+=("$arg")
+            ;;
+        "--conf"*)
+            case "$1" in
+                "--"*"="*)
+                    arg="$(echo "$1" | sed -r "s/[^=]+=//")"
+                    [[ -n $arg ]] || usage 1
+                    ;;
+                *) shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
+            esac
+            config="$arg"
             ;;
         "-d"|"--dh") dh="true" ;;
         "-h"|"--help") usage 0 ;;
@@ -293,7 +306,7 @@ while [[ $# -gt 0 ]]; do
             action="remove"
             remove="$arg"
             ;;
-        "--sample-params") action="params" ;;
+        "--sample-config") action="config" ;;
         "-u"|"--undo") action="undo" ;;
         "-w"|"--wipe") action="wipe" ;;
         *) args+=("$1") ;;
@@ -304,22 +317,25 @@ done
 
 [[ -n $(command -v openssl) ]] || err 2 "openssl is not installed"
 
+# Source config if specified
+[[ -z $config ]] || [[ ! -f $config ]] || . $config
+
 # Operate from with-in PKI directory
 mkdir -p $pki
 cd $pki
 
-[[ ! -f params ]] || . params
+# Deprecated params
+[[ -n $config ]] || [[ ! -f params ]] || . params
+
+# Source config in pki directory if one wasn't specified
+[[ -n $config ]] || [[ ! -f certifyme.conf ]] || . certifyme.conf
 
 case "${CREATE_DER:-true}" in
     "T"|"t"|"True"|"true"|"Y"|"y"|"Yes"|"yes") CREATE_DER="true" ;;
     *) unset CREATE_DER ;;
 esac
 
-automate="-batch"
-cfg="/tmp/certifyme.openssl.cnf"
-config="-config certifyme.openssl.cnf"
-
-cat >$cfg <<EOF
+cat >$tmpcnf <<EOF
 # OpenSSL configuration file.
 
 dir = .
@@ -427,20 +443,10 @@ DNS.1 = TODO_CN
 EOF
 
 case "$action" in
-    "generate")
-        create_ca
-        [[ -z $dh ]] || create_dh
-        for client in "${clients[@]}"; do
-            create_cert $client "client"
-        done; unset client
-        for host in "$@"; do
-            create_cert $host "server"
-        done; unset host
-        ;;
-    "params")
+    "config")
         echo "# Adjust and uncomment these values as needed"
         echo
-        echo "## Certificate related params"
+        echo "## Certificate related options"
         echo
         echo "# CACN=\"Self-signed CA\""
         echo "# CADAYS=11688"
@@ -452,13 +458,23 @@ case "$action" in
         echo "# STATE=\"State name\""
         echo "# UNIT=\"Department\""
         echo
-        echo "## certifyme related params"
+        echo "## certifyme related options"
         echo
         echo "# CREATE_DER=\"true\""
+        ;;
+    "generate")
+        create_ca
+        [[ -z $dh ]] || create_dh
+        for client in "${clients[@]}"; do
+            create_cert $client "client"
+        done; unset client
+        for host in "$@"; do
+            create_cert $host "server"
+        done; unset host
         ;;
     "remove") remove_from_db $remove ;;
     "undo") undo ;;
     "wipe") wipe_pki ;;
 esac
 
-rm -f $cfg certifyme.openssl.cnf
+rm -f certifyme.openssl.cnf $tmpcnf
