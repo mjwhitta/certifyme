@@ -5,16 +5,16 @@ certificates.
 
 ## Usage
 
-To use this tool, generate a `params` file:
+To use this tool, generate a `certifyme.conf` file:
 
 ```
-$ certify --sample-params >params
+$ certify --sample-config >certifyme.conf
 ```
 
 and then edit the variables to fit your needs.
 
-**Note: If using the `--pki` flag, the `params` file must be in the
-specified directory**
+**Note: If using the `--pki` flag or `CERTIFYME_PKI` env var, the
+default `certifyme.conf` would be located in the specified directory**
 
 Certificates can be created with the following commands:
 

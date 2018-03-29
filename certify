@@ -259,7 +259,7 @@ wipe_pki() {
 declare -a args clients
 unset config dh remove
 action="generate"
-pki="."
+pki="${CERTIFYME_PKI:-.}"
 sslcnf="-config certifyme.openssl.cnf"
 tmpcnf="/tmp/certifyme.openssl.cnf"
 
