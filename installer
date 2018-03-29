@@ -31,8 +31,6 @@ done
 case "$action" in
     "install")
         sudo install -g root -m 755 -o root certify /usr/local/bin
-        sudo sed -i -e "s#INSTALL_DIR#$(pwd)#g" \
-            /usr/local/bin/certify
         ;;
     "uninstall") sudo rm -f /usr/local/bin/certify ;;
     *) usage 2 ;;
