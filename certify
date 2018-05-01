@@ -168,18 +168,16 @@ remove_from_db() {
     [[ $# -eq 1 ]] || return 0
     [[ -f ca/ca.cert.pem ]] || return 0
     [[ -f index.db ]] || return 0
-    remove="$(\grep -m 1 "/CN=$1" index.db | awk '{print $3,$5}')"
-    [[ -n $remove ]] || return 0
+    serial="$(\grep -Em 1 "/CN=$1$" index.db | awk '{print $3}')"
+    [[ -n $serial ]] || return 0
 
     warn "Removing $1 from the database"
 
     # Update the index.db
-    serial="${remove/ */}"
     sed -i -r "/\s+$serial\s+/d" index.db
 
     # Remove certificate, csr, and key
-    host="$(echo "$remove" | awk -F "=" '{print $NF}')"
-    rm -f */$host.*
+    rm -f */$1.*
 }
 
 setup() {
@@ -212,14 +210,13 @@ setup() {
 undo() {
     [[ -f ca/ca.cert.pem ]] || return 0
     [[ -f index.db ]] || return 0
-    rollback="$(tail -n 1 index.db | awk '{print $3,$5}')"
-    [[ -n $rollback ]] || return 0
+    serial="$(tail -n 1 index.db | awk '{print $3}')"
+    [[ -n $serial ]] || return 0
 
-    host="$(echo "$rollback" | awk -F "=" '{print $NF}')"
+    host="$(tail -n 1 index.db | awk -F "=" '{print $NF}')"
     warn "Rolling back database prior to $host"
 
     # Rollback the index.db
-    serial="${rollback/ */}"
     echo "$serial" >index.db.serial
     sed -i -r "/\s+$serial\s+/d" index.db
 
