@@ -29,9 +29,7 @@ done
 [[ $# -eq 0 ]] || usage 1
 
 case "$action" in
-    "install")
-        sudo install -g root -m 755 -o root certify /usr/local/bin
-        ;;
-    "uninstall") sudo rm -f /usr/local/bin/certify ;;
+    "install") mkdir -p $HOME/bin; install -m 700 certify $HOME/bin ;;
+    "uninstall") rm -f $HOME/bin/certify ;;
     *) usage 2 ;;
 esac
