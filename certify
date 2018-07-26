@@ -154,7 +154,9 @@ create_key() {
     [[ -z $CREATE_DER ]] || ln -sf ../private/$1.der ders/
 }
 
-err() { echo -e "\e[31m[!] ${2}\e[0m"; exit $1; }
+err() { echo -e "${color:+\e[31m}[!] $@\e[0m"; }
+
+errx() { echo -e "${color:+\e[31m}[!] ${@:2}\e[0m"; exit $1; }
 
 fix_perms() {
     find ca certs dh private -type d -exec chmod 700 {} +
@@ -162,7 +164,19 @@ fix_perms() {
     chmod -R go-rwx .
 }
 
-info() { echo -e "\e[37m[+] ${@}\e[0m"; }
+good() { echo -e "${color:+\e[32m}[+] $@\e[0m"; }
+
+info() { echo -e "${color:+\e[37m}[*] $@\e[0m"; }
+
+long_opt() {
+    local arg shift="0"
+    case "$1" in
+        "--"*"="*) arg="${1#*=}"; [[ -n $arg ]] || usage 1 ;;
+        *) shift="1"; shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
+    esac
+    echo "$arg"
+    return $shift
+}
 
 remove_from_db() {
     [[ $# -eq 1 ]] || return 0
@@ -233,6 +247,7 @@ usage() {
     echo "                         (default: $pki/certifyme.conf)"
     echo "    -d, --dh             Create Diffie-Hellman parameters"
     echo "    -h, --help           Display this help message"
+    echo "    --nocolor            Disable colorized output"
     echo "    -p, --pki=DIR        Use specified directory for PKI"
     echo "                         (default: $pki)"
     echo "    -r, --rm=HOST        Remove a certificate (does NOT"
@@ -246,7 +261,7 @@ usage() {
     exit $1
 }
 
-warn() { echo -e "\e[33m[-] ${@}\e[0m"; }
+warn() { echo -e "${color:+\e[33m}[-] $@\e[0m"; }
 
 wipe_pki() {
     warn "Wiping PKI"
@@ -254,54 +269,26 @@ wipe_pki() {
 }
 
 declare -a args clients
-unset config dh remove
+unset config dh help remove
 action="generate"
+color="true"
 pki="${CERTIFYME_PKI:-.}"
 sslcnf="-config certifyme.openssl.cnf"
 tmpcnf="/tmp/certifyme.openssl.cnf"
 
+# Parse command line options
 while [[ $# -gt 0 ]]; do
     case "$1" in
         "--") shift && args+=("$@") && break ;;
-        "-c"|"--client"*)
-            case "$1" in
-                "--"*"="*) arg="${1#*=}"; [[ -n $arg ]] || usage 1 ;;
-                *) shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
-            esac
-            clients+=("$arg")
-            ;;
-        "--conf"*)
-            case "$1" in
-                "--"*"="*)
-                    arg="$(echo "$1" | sed -r "s/[^=]+=//")"
-                    [[ -n $arg ]] || usage 1
-                    ;;
-                *) shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
-            esac
-            config="$arg"
-            ;;
+        "-c"|"--client"*) clients+=($(long_opt $@)) || shift ;;
+        "--conf"*) config="$(long_opt $@)" || shift ;;
         "-d"|"--dh") dh="true" ;;
-        "-h"|"--help") usage 0 ;;
-        "-p"|"--pki"*)
-            case "$1" in
-                "--"*"="*)
-                    arg="$(echo "$1" | sed -r "s/[^=]+=//")"
-                    [[ -n $arg ]] || usage 1
-                    ;;
-                *) shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
-            esac
-            pki="$arg"
-            ;;
+        "-h"|"--help") help="true" ;;
+        "--nocolor") unset color ;;
+        "-p"|"--pki"*) pki="$(long_opt $@)" || shift ;;
         "-r"|"--rm"*)
-            case "$1" in
-                "--"*"="*)
-                    arg="$(echo "$1" | sed -r "s/[^=]+=//")"
-                    [[ -n $arg ]] || usage 1
-                    ;;
-                *) shift; [[ $# -gt 0 ]] || usage 1; arg="$1" ;;
-            esac
             action="remove"
-            remove="$arg"
+            remove="$(long_opt $@)" || shift
             ;;
         "--sample-config") action="config" ;;
         "-u"|"--undo") action="undo" ;;
@@ -312,7 +299,11 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -z ${args[@]} ]] || set -- "${args[@]}"
 
-[[ -n $(command -v openssl) ]] || err 2 "openssl is not installed"
+# Check for valid params and missing dependencies
+[[ -z $help ]] || usage 0
+for dep in openssl; do
+    [[ -n $(command -v $dep) ]] || errx 2 "$dep is not installed"
+done; unset dep
 
 # Source config if specified
 [[ -z $config ]] || [[ ! -f $config ]] || . $config
