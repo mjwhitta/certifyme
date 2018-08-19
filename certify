@@ -29,6 +29,8 @@
 # SOFTWARE.
 # --------------------------------------------------------------------
 
+clean() { rm -f certifyme.openssl.cnf $tmpcnf; exit ${1:-0}; }
+
 create_ca() {
     setup "${CACN:-Self-signed CA}"
     create_key ca.key
@@ -39,6 +41,7 @@ create_ca() {
             -extensions v3_ca -key private/ca.key.pem -new \
             -out ca/ca.cert.pem -passin pass:${CAPASS:-password} \
             -sha256 -subj "/$subj" -x509
+        [[ -f ca/ca.cert.pem ]] || err "Failed to create ca.cert.pem"
     fi
 
     if [[ -n $CREATE_DER ]]; then
@@ -47,13 +50,18 @@ create_ca() {
             openssl x509 -in ca/ca.cert.pem -inform pem \
                 -out ca/ca.cert.der -outform der
         fi
+        [[ -f ca/ca.cert.der ]] || err "Failed to create ca.cert.der"
     fi
 
     fix_perms
 
     # Symlink files
-    ln -sf ../ca/ca.cert.pem pems/
-    [[ -z $CREATE_DER ]] || ln -sf ../ca/ca.cert.der ders/
+    local der_link="ca/ca.cert.der"
+    local pem_link="ca/ca.cert.pem"
+    [[ ! -f $pem_link ]] || ln -sf ../$pem_link pems/
+    if [[ -n $CREATE_DER ]]; then
+        [[ ! -f $der_link ]] || ln -sf ../$der_link ders/
+    fi
 }
 
 create_cert() {
@@ -83,10 +91,11 @@ create_cert() {
             -new -out csr/$csr.pem -sha256
     fi
 
-    if [[ ! -f certs/$cert.pem ]]; then
+    if [[ -f csr/$csr.pem ]] && [[ ! -f certs/$cert.pem ]]; then
         info "Generating $cert.pem"
         openssl ca -batch $sslcnf -extensions ${2}_cert \
             -in csr/$csr.pem -notext -out certs/$cert.pem
+        [[ ! -f certs/$cert.pem ]] || err "Failed to create $cert.pem"
     fi
 
     if [[ -n $CREATE_DER ]]; then
@@ -97,6 +106,7 @@ create_cert() {
             openssl x509 -in certs/$cert.pem -inform pem \
                 -out certs/$cert.der -outform der
         fi
+        [[ ! -f certs/$cert.der ]] || err "Failed to create $cert.der"
     fi
 
     rm -f *.old
@@ -108,14 +118,19 @@ create_cert() {
     fix_perms
 
     # Symlink files
-    ln -sf ../certs/$cert.pem pems/
-    [[ -z $CREATE_DER ]] || ln -sf ../certs/$cert.der ders/
+    local der_link="certs/$cert.der"
+    local pem_link="certs/$cert.pem"
+    [[ ! -f $pem_link ]] || ln -sf ../$pem_link pems/
+    if [[ -n $CREATE_DER ]]; then
+        [[ ! -f $der_link ]] || ln -sf ../$der_link ders/
+    fi
 }
 
 create_dh() {
     if [[ ! -f dh/dh2048.pem ]]; then
         info "Generating dh2048.pem"
         openssl dhparam -out dh/dh2048.pem 2048
+        [[ -f dh/dh2048.pem ]] || err "Failed to create dh2048.pem"
     fi
 
     if [[ -n $CREATE_DER ]]; then
@@ -124,19 +139,25 @@ create_dh() {
             openssl dhparam -in dh/dh2048.pem -inform pem \
                 -out dh/dh2048.der -outform der
         fi
+        [[ -f dh/dh2048.der ]] || err "Failed to create dh2048.der"
     fi
 
     fix_perms
 
     # Symlink files
-    ln -sf ../dh/dh2048.pem pems/
-    [[ -z $CREATE_DER ]] || ln -sf ../dh/dh2048.der ders/
+    local der_link="dh/dh2048.der"
+    local pem_link="dh/dh2048.pem"
+    [[ ! -f $pem_link ]] || ln -sf ../$pem_link pems/
+    if [[ -n $CREATE_DER ]]; then
+        [[ ! -f $der_link ]] || ln -sf ../$der_link ders/
+    fi
 }
 
 create_key() {
     if [[ ! -f private/$1.pem ]]; then
         info "Generating $1.pem"
         openssl genrsa -out private/$1.pem -passout pass: 2048
+        [[ -f private/$1.pem ]] || err "Failed to create key $1.pem"
     fi
 
     if [[ -n $CREATE_DER ]]; then
@@ -145,18 +166,23 @@ create_key() {
             openssl pkcs8 -in private/$1.pem -inform pem \
                 -out private/$1.der -outform der -passout pass: -topk8
         fi
+        [[ -f private/$1.der ]] || err "Failed to create key $1.der"
     fi
 
     fix_perms
 
     # Symlink files
-    ln -sf ../private/$1.pem pems/
-    [[ -z $CREATE_DER ]] || ln -sf ../private/$1.der ders/
+    local der_link="$1.der"
+    local pem_link="$1.pem"
+    [[ ! -f $pem_link ]] || ln -sf ../$pem_link pems/
+    if [[ -n $CREATE_DER ]]; then
+        [[ ! -f $der_link ]] || ln -sf ../$der_link ders/
+    fi
 }
 
 err() { echo -e "${color:+\e[31m}[!] $@\e[0m"; }
 
-errx() { echo -e "${color:+\e[31m}[!] ${@:2}\e[0m"; exit $1; }
+errx() { echo -e "${color:+\e[31m}[!] ${@:2}\e[0m"; clean $1; }
 
 fix_perms() {
     find ca certs dh private -type d -exec chmod 700 {} +
@@ -469,4 +495,4 @@ case "$action" in
     "wipe") wipe_pki ;;
 esac
 
-rm -f certifyme.openssl.cnf $tmpcnf
+clean
