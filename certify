@@ -221,6 +221,8 @@ setup() {
         $tmpcnf >certifyme.openssl.cnf
 }
 
+subinfo() { echo -e "${color:+\e[36m}[=] $@\e[0m"; }
+
 undo() {
     [[ -f ca/ca.cert.pem ]] || return 0
     [[ -f index.db ]] || return 0
@@ -239,24 +241,24 @@ undo() {
 }
 
 usage() {
-    echo "Usage: ./${0/*\//} [OPTIONS] [host1]...[hostN]"
+    echo "Usage: ${0##*/} [OPTIONS] [host1]...[hostN]"
     echo "Options:"
-    echo "    -c, --client=HOST    Create client certificate (can be"
-    echo "                         used more than once)"
-    echo "    --conf=CONFIG        Use the specified certifyme.conf"
-    echo "                         (default: $pki/certifyme.conf)"
-    echo "    -d, --dh             Create Diffie-Hellman parameters"
-    echo "    -h, --help           Display this help message"
-    echo "    --nocolor            Disable colorized output"
-    echo "    -p, --pki=DIR        Use specified directory for PKI"
-    echo "                         (default: $pki)"
-    echo "    -r, --rm=HOST        Remove a certificate (does NOT"
-    echo "                         revoke)"
-    echo "    --sample-config      Generate sample certifyme.conf"
-    echo "    -u, --undo           Rollback most recently generated"
-    echo "                         certificate"
-    echo "    -w, --wipe           Wipe CA, certificates, dh params"
-    echo "                         and keys"
+    echo "    -c, --client=HOST      Create client certificate (can"
+    echo "                           be used more than once)"
+    echo "    --conf=CONFIG          Use the specified certifyme.conf"
+    echo "                           (default: $pki/certifyme.conf)"
+    echo "    -d, --dh               Create Diffie-Hellman parameters"
+    echo "    -h, --help             Display this help message"
+    echo "    --nocolor              Disable colorized output"
+    echo "    -p, --pki=DIR          Use specified directory for PKI"
+    echo "                           (default: $pki)"
+    echo "    -r, --rm=HOST          Remove a certificate (does NOT"
+    echo "                           revoke)"
+    echo "    -s, --sample-config    Generate sample certifyme.conf"
+    echo "    -u, --undo             Rollback most recently generated"
+    echo "                           certificate"
+    echo "    -w, --wipe             Wipe CA, certificates, dh params"
+    echo "                           and keys"
     echo
     exit $1
 }
@@ -267,6 +269,11 @@ wipe_pki() {
     warn "Wiping PKI"
     rm -rf ca certs csr ders dh index.db* pems private
 }
+
+# Check for missing dependencies
+for dep in openssl; do
+    [[ -n $(command -v $dep) ]] || errx 2 "$dep is not installed"
+done; unset dep
 
 declare -a args clients
 unset config dh help remove
@@ -280,17 +287,17 @@ tmpcnf="/tmp/certifyme.openssl.cnf"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         "--") shift && args+=("$@") && break ;;
-        "-c"|"--client"*) clients+=($(long_opt $@)) || shift ;;
-        "--conf"*) config="$(long_opt $@)" || shift ;;
+        "-c"|"--client"*) clients+=($(long_opt "$@")) || shift ;;
+        "--conf"*) config="$(long_opt "$@")" || shift ;;
         "-d"|"--dh") dh="true" ;;
         "-h"|"--help") help="true" ;;
         "--nocolor") unset color ;;
-        "-p"|"--pki"*) pki="$(long_opt $@)" || shift ;;
+        "-p"|"--pki"*) pki="$(long_opt "$@")" || shift ;;
         "-r"|"--rm"*)
             action="remove"
-            remove="$(long_opt $@)" || shift
+            remove="$(long_opt "$@")" || shift
             ;;
-        "--sample-config") action="config" ;;
+        "-s"|"--sample-config") action="config" ;;
         "-u"|"--undo") action="undo" ;;
         "-w"|"--wipe") action="wipe" ;;
         *) args+=("$1") ;;
@@ -299,11 +306,8 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -z ${args[@]} ]] || set -- "${args[@]}"
 
-# Check for valid params and missing dependencies
+# Check for valid params
 [[ -z $help ]] || usage 0
-for dep in openssl; do
-    [[ -n $(command -v $dep) ]] || errx 2 "$dep is not installed"
-done; unset dep
 
 # Source config if specified
 [[ -z $config ]] || [[ ! -f $config ]] || . $config
