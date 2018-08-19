@@ -95,7 +95,7 @@ create_cert() {
         info "Generating $cert.pem"
         openssl ca -batch $sslcnf -extensions ${2}_cert \
             -in csr/$csr.pem -notext -out certs/$cert.pem
-        [[ ! -f certs/$cert.pem ]] || err "Failed to create $cert.pem"
+        [[ -f certs/$cert.pem ]] || err "Failed to create $cert.pem"
     fi
 
     if [[ -n $CREATE_DER ]]; then
@@ -106,7 +106,7 @@ create_cert() {
             openssl x509 -in certs/$cert.pem -inform pem \
                 -out certs/$cert.der -outform der
         fi
-        [[ ! -f certs/$cert.der ]] || err "Failed to create $cert.der"
+        [[ -f certs/$cert.der ]] || err "Failed to create $cert.der"
     fi
 
     rm -f *.old
