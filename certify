@@ -89,6 +89,7 @@ create_cert() {
         info "Generating $csr.pem"
         openssl req -batch $sslcnf -key private/$key.pem \
             -new -out csr/$csr.pem -sha256
+        [[ -f csr/$csr.pem ]] || err "Failed to create $csr.pem"
     fi
 
     if [[ -f csr/$csr.pem ]] && [[ ! -f certs/$cert.pem ]]; then
