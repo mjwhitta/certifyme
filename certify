@@ -32,13 +32,13 @@
 ### Helpers begin
 checkdeps() {
     for d in "${deps[@]}"; do
-        [[ -n $(command -v $d) ]] || errx 128 "$d is not installed"
+        [[ -n $(command -v "$d") ]] || errx 128 "$d is not installed"
     done; unset d
 }
-err() { echo -e "${color:+\e[31m}[!] $@\e[0m"; }
-errx() { echo -e "${color:+\e[31m}[!] ${@:2}\e[0m"; exit $1; }
-good() { echo -e "${color:+\e[32m}[+] $@\e[0m"; }
-info() { echo -e "${color:+\e[37m}[*] $@\e[0m"; }
+err() { echo -e "${color:+\e[31m}[!] $*\e[0m"; }
+errx() { echo -e "${color:+\e[31m}[!] ${*:2}\e[0m"; exit "$1"; }
+good() { echo -e "${color:+\e[32m}[+] $*\e[0m"; }
+info() { echo -e "${color:+\e[37m}[*] $*\e[0m"; }
 long_opt() {
     local arg shift="0"
     case "$1" in
@@ -48,8 +48,8 @@ long_opt() {
     echo "$arg"
     return $shift
 }
-subinfo() { echo -e "${color:+\e[36m}[=] $@\e[0m"; }
-warn() { echo -e "${color:+\e[33m}[-] $@\e[0m"; }
+subinfo() { echo -e "${color:+\e[36m}[=] $*\e[0m"; }
+warn() { echo -e "${color:+\e[33m}[-] $*\e[0m"; }
 ### Helpers end
 
 clean() { rm -f certifyme.openssl.cnf $tmpcnf; exit ${1:-0}; }
@@ -196,8 +196,8 @@ create_key() {
     fix_perms
 
     # Symlink files
-    local der_link="$1.der"
-    local pem_link="$1.pem"
+    local der_link="private/$1.der"
+    local pem_link="private/$1.pem"
     [[ ! -f $pem_link ]] || ln -sf ../$pem_link pems/
     if [[ -n $CREATE_DER ]]; then
         [[ ! -f $der_link ]] || ln -sf ../$der_link ders/
@@ -289,7 +289,7 @@ Options:
     -w, --wipe             Wipe CA, certificates, dh params and keys
 
 EOF
-    exit $1
+    exit "$1"
 }
 
 wipe_pki() {
