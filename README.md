@@ -54,5 +54,5 @@ You can install the `certify` script to `/usr/local/bin` with the
 following command:
 
 ```
-$ ./installer
+$ ./installer -d /usr/local/bin
 ```
