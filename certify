@@ -29,14 +29,16 @@
 # SOFTWARE.
 # --------------------------------------------------------------------
 
+# shellcheck disable=SC1090,SC1091,SC2086
+
 ### Helpers begin
-checkdeps() {
+check_deps() {
     for d in "${deps[@]}"; do
         [[ -n $(command -v "$d") ]] || errx 128 "$d is not installed"
     done; unset d
 }
 err() { echo -e "${color:+\e[31m}[!] $*\e[0m"; }
-errx() { echo -e "${color:+\e[31m}[!] ${*:2}\e[0m"; exit "$1"; }
+errx() { err "${*:2}"; exit "$1"; }
 good() { echo -e "${color:+\e[32m}[+] $*\e[0m"; }
 info() { echo -e "${color:+\e[37m}[*] $*\e[0m"; }
 long_opt() {
@@ -52,7 +54,7 @@ subinfo() { echo -e "${color:+\e[36m}[=] $*\e[0m"; }
 warn() { echo -e "${color:+\e[33m}[-] $*\e[0m"; }
 ### Helpers end
 
-clean() { rm -f certifyme.openssl.cnf $tmpcnf; exit ${1:-0}; }
+clean() { rm -f certifyme.openssl.cnf "$tmpcnf"; }
 
 create_ca() {
     setup "${CACN:-Self-signed CA}"
@@ -60,9 +62,9 @@ create_ca() {
 
     if [[ ! -f ca/ca.cert.pem ]]; then
         info "Generating ca.cert.pem"
-        openssl req -batch $sslcnf -days +${CADAYS:-11688} \
+        openssl req -batch $sslcnf -days +"${CADAYS:-11688}" \
             -extensions v3_ca -key private/ca.key.pem -new \
-            -out ca/ca.cert.pem -passin pass:${CAPASS:-password} \
+            -out ca/ca.cert.pem -passin pass:"${CAPASS:-password}" \
             -sha256 -subj "/$subj" -x509
         [[ -f ca/ca.cert.pem ]] || err "Failed to create ca.cert.pem"
     fi
@@ -103,22 +105,22 @@ create_cert() {
             ;;
     esac
 
-    create_key $key
+    create_key "$key"
 
     # Shouldn't have a csr and no certificate
-    [[ -f certs/$cert.pem ]] || rm -f csr/$csr.pem
+    [[ -f certs/$cert.pem ]] || rm -f "csr/$csr.pem"
 
     if [[ ! -f csr/$csr.pem ]]; then
         info "Generating $csr.pem"
-        openssl req -batch $sslcnf -key private/$key.pem \
-            -new -out csr/$csr.pem -sha256
+        openssl req -batch $sslcnf -key "private/$key.pem" \
+            -new -out "csr/$csr.pem" -sha256
         [[ -f csr/$csr.pem ]] || err "Failed to create $csr.pem"
     fi
 
     if [[ -f csr/$csr.pem ]] && [[ ! -f certs/$cert.pem ]]; then
         info "Generating $cert.pem"
-        openssl ca -batch $sslcnf -extensions ${2}_cert \
-            -in csr/$csr.pem -notext -out certs/$cert.pem
+        openssl ca -batch $sslcnf -extensions "${2}_cert" \
+            -in "csr/$csr.pem" -notext -out "certs/$cert.pem"
         [[ -f certs/$cert.pem ]] || err "Failed to create $cert.pem"
     fi
 
@@ -127,16 +129,16 @@ create_cert() {
            [[ -f certs/$cert.pem ]]
         then
             info "Generating $cert.der"
-            openssl x509 -in certs/$cert.pem -inform pem \
-                -out certs/$cert.der -outform der
+            openssl x509 -in "certs/$cert.pem" -inform pem \
+                -out "certs/$cert.der" -outform der
         fi
         [[ -f certs/$cert.der ]] || err "Failed to create $cert.der"
     fi
 
-    rm -f *.old
-    for junk in $(ls certs | \grep -Ev "\.cert\.(der|pem)"); do
-        rm -f certs/$junk
-    done; unset junk
+    rm -f ./*.old
+    find certs -regextype posix-extended \
+        -iregex ".*\.cert\.(der|pem)" -prune -o -type f \
+        -exec rm -f {} +
     find certs -size 0 -exec rm -f {} +
 
     fix_perms
@@ -144,9 +146,9 @@ create_cert() {
     # Symlink files
     local der_link="certs/$cert.der"
     local pem_link="certs/$cert.pem"
-    [[ ! -f $pem_link ]] || ln -sf ../$pem_link pems/
+    [[ ! -f $pem_link ]] || ln -sf "../$pem_link" pems/
     if [[ -n $CREATE_DER ]]; then
-        [[ ! -f $der_link ]] || ln -sf ../$der_link ders/
+        [[ ! -f $der_link ]] || ln -sf "../$der_link" ders/
     fi
 }
 
@@ -180,15 +182,16 @@ create_dh() {
 create_key() {
     if [[ ! -f private/$1.pem ]]; then
         info "Generating $1.pem"
-        openssl genrsa -out private/$1.pem -passout pass: 2048
+        openssl genrsa -out "private/$1.pem" -passout pass: 2048
         [[ -f private/$1.pem ]] || err "Failed to create key $1.pem"
     fi
 
     if [[ -n $CREATE_DER ]]; then
         if [[ ! -f private/$1.der ]] && [[ -f private/$1.pem ]]; then
             info "Generating $1.der"
-            openssl pkcs8 -in private/$1.pem -inform pem \
-                -out private/$1.der -outform der -passout pass: -topk8
+            openssl pkcs8 -in "private/$1.pem" -inform pem \
+                -out "private/$1.der" -outform der -passout pass: \
+                -topk8
         fi
         [[ -f private/$1.der ]] || err "Failed to create key $1.der"
     fi
@@ -198,9 +201,9 @@ create_key() {
     # Symlink files
     local der_link="private/$1.der"
     local pem_link="private/$1.pem"
-    [[ ! -f $pem_link ]] || ln -sf ../$pem_link pems/
+    [[ ! -f $pem_link ]] || ln -sf "../$pem_link" pems/
     if [[ -n $CREATE_DER ]]; then
-        [[ ! -f $der_link ]] || ln -sf ../$der_link ders/
+        [[ ! -f $der_link ]] || ln -sf "../$der_link" ders/
     fi
 }
 
@@ -223,7 +226,7 @@ remove_from_db() {
     sed -i -r "/\s+$serial\s+/d" index.db
 
     # Remove certificate, csr, and key
-    rm -f */$1.*
+    rm -f ./*/"$1."*
 }
 
 setup() {
@@ -250,7 +253,7 @@ setup() {
         -e "s/TODO_STATE/\"${STATE:-delete}\"/g" \
         -e "s/TODO_UNIT/\"${UNIT:-delete}\"/g" \
         -e "/delete/d" \
-        $tmpcnf >certifyme.openssl.cnf
+        "$tmpcnf" >certifyme.openssl.cnf
 }
 
 undo() {
@@ -267,7 +270,7 @@ undo() {
     sed -i -r "/\s+$serial\s+/d" index.db
 
     # Remove certificate, csr, and key
-    rm -f */$host.*
+    rm -f ./*/"$host."*
 }
 
 usage() {
@@ -281,7 +284,7 @@ Options:
                            $pki/certifyme.conf)
     -d, --dh               Create Diffie-Hellman parameters
     -h, --help             Display this help message
-    --nocolor              Disable colorized output
+    --no-color             Disable colorized output
     -p, --pki=DIR          Use specified PKI directory (default: $pki)
     -r, --rm=HOST          Remove a certificate (does NOT revoke)
     -s, --sample-config    Generate sample certifyme.conf
@@ -307,17 +310,17 @@ sslcnf="-config certifyme.openssl.cnf"
 tmpcnf="/tmp/certifyme.openssl.cnf"
 
 # Check for missing dependencies
-checkdeps
+check_deps
 
 # Parse command line options
 while [[ $# -gt 0 ]]; do
     case "$1" in
         "--") shift && args+=("$@") && break ;;
-        "-c"|"--client"*) clients+=($(long_opt "$@")) || shift ;;
+        "-c"|"--client"*) clients+=("$(long_opt "$@")") || shift ;;
         "--conf"*) config="$(long_opt "$@")" || shift ;;
         "-d"|"--dh") dh="true" ;;
         "-h"|"--help") help="true" ;;
-        "--nocolor") unset color ;;
+        "--no-color") unset color ;;
         "-p"|"--pki"*) pki="$(long_opt "$@")" || shift ;;
         "-r"|"--rm"*)
             action="remove"
@@ -330,20 +333,17 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
-[[ -z ${args[@]} ]] || set -- "${args[@]}"
+[[ ${#args[@]} -eq 0 ]] || set -- "${args[@]}"
 
 # Check for valid params
 [[ -z $help ]] || usage 0
 
 # Source config if specified
-[[ -z $config ]] || [[ ! -f $config ]] || . $config
+[[ -z $config ]] || [[ ! -f $config ]] || . "$config"
 
 # Operate from with-in PKI directory
-mkdir -p $pki
-cd $pki
-
-# Deprecated params
-[[ -n $config ]] || [[ ! -f params ]] || . params
+mkdir -p "$pki"
+cd "$pki"
 
 # Source config in pki directory if one wasn't specified
 [[ -n $config ]] || [[ ! -f certifyme.conf ]] || . certifyme.conf
@@ -353,7 +353,7 @@ case "${CREATE_DER:-true}" in
     *) unset CREATE_DER ;;
 esac
 
-cat >$tmpcnf <<EOF
+cat >"$tmpcnf" <<EOF
 # OpenSSL configuration file.
 
 dir = .
@@ -484,13 +484,13 @@ case "$action" in
         create_ca
         [[ -z $dh ]] || create_dh
         for client in "${clients[@]}"; do
-            create_cert $client "client"
+            create_cert "$client" "client"
         done; unset client
         for host in "$@"; do
-            create_cert $host "server"
+            create_cert "$host" "server"
         done; unset host
         ;;
-    "remove") remove_from_db $remove ;;
+    "remove") remove_from_db "$remove" ;;
     "undo") undo ;;
     "wipe") wipe_pki ;;
 esac
