@@ -60,7 +60,7 @@ create_ca() {
     setup "${CACN:-Self-signed CA}"
     create_key ca.key
 
-    if [[ ! -f ca/ca.cert.pem ]]; then
+    if [[ ! -f ca/ca.cert.pem ]] && [[ -f private/ca.key.pem ]]; then
         info "Generating ca.cert.pem"
         openssl req -batch $sslcnf -days +"${CADAYS:-11688}" \
             -extensions v3_ca -key private/ca.key.pem -new \
@@ -107,10 +107,15 @@ create_cert() {
 
     create_key "$key"
 
-    # Shouldn't have a csr and no certificate
-    [[ -f certs/$cert.pem ]] || rm -f "csr/$csr.pem"
+    if [[ -n $csrfile ]]; then
+        cp -f "$csrfile" "csr/$csr.pem"
+        unset csrfile
+    else
+        # Shouldn't have a csr and no certificate
+        [[ -f certs/$cert.pem ]] || rm -f "csr/$csr.pem"
+    fi
 
-    if [[ ! -f csr/$csr.pem ]]; then
+    if [[ ! -f csr/$csr.pem ]] && [[ -f private/$key.pem ]]; then
         info "Generating $csr.pem"
         openssl req -batch $sslcnf -key "private/$key.pem" \
             -new -out "csr/$csr.pem" -sha256
@@ -282,6 +287,8 @@ Options:
                            than once)
     --conf=CONFIG          Use the specified certifyme.conf (default:
                            $pki/certifyme.conf)
+    --csr=FILE             Use the specified CSR for the first
+                           requested client/server
     -d, --dh               Create Diffie-Hellman parameters
     -h, --help             Display this help message
     --no-color             Disable colorized output
@@ -301,7 +308,7 @@ wipe_pki() {
 }
 
 declare -a args clients deps
-unset config dh help remove
+unset config csrfile dh help remove
 action="generate"
 color="true"
 deps+=("openssl")
@@ -318,6 +325,7 @@ while [[ $# -gt 0 ]]; do
         "--") shift && args+=("$@") && break ;;
         "-c"|"--client"*) clients+=("$(long_opt "$@")") || shift ;;
         "--conf"*) config="$(long_opt "$@")" || shift ;;
+        "--csr"*) csrfile="$(long_opt "$@")" || shift ;;
         "-d"|"--dh") dh="true" ;;
         "-h"|"--help") help="true" ;;
         "--no-color") unset color ;;
@@ -337,6 +345,16 @@ done
 
 # Check for valid params
 [[ -z $help ]] || usage 0
+
+# Get fullpath to csrfile and ensure it exists
+if [[ -n $csrfile ]]; then
+    case "$csrfile" in
+        "/"*) ;;
+        *) csrfile="$(pwd)/$csrfile" ;;
+    esac
+
+    [[ -f $csrfile ]] || errx 1 "Specified CSR does not exist"
+fi
 
 # Source config if specified
 [[ -z $config ]] || [[ ! -f $config ]] || . "$config"
