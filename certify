@@ -497,23 +497,25 @@ EOF
 
 case "$action" in
     "config")
-        echo "# Adjust and uncomment these values as needed"
-        echo
-        echo "## Certificate related options"
-        echo
-        echo "# CACN=\"Self-signed CA\""
-        echo "# CADAYS=11688"
-        echo "# CAPASS=\"password\""
-        echo "# CERTDAYS=5844"
-        echo "# CITY=\"City name\""
-        echo "# COMPANY=\"Company name\""
-        echo "# COUNTRY=\"US\""
-        echo "# STATE=\"State name\""
-        echo "# UNIT=\"Department\""
-        echo
-        echo "## certifyme related options"
-        echo
-        echo "# CREATE_DER=\"true\""
+        cat <<EOF
+# Adjust and uncomment these values as needed
+
+## Certificate related options
+
+# CACN="Self-signed CA"
+# CADAYS=11688
+# CAPASS="$(head -c 4 /dev/urandom | xxd -p)"
+# CERTDAYS=5844
+# CITY="City name"
+# COMPANY="Company name"
+# COUNTRY="US"
+# STATE="State name"
+# UNIT="Department"
+
+## certifyme related options
+
+# CREATE_DER="true"
+EOF
         ;;
     "generate")
         create_ca
