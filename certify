@@ -155,6 +155,23 @@ create_cert() {
     if [[ -n $CREATE_DER ]]; then
         [[ ! -f $der_link ]] || ln -sf "../$der_link" ders/
     fi
+
+    # Generate concatenated files
+    case "$2" in
+        "client")
+            if [[ -f certs/$cert.pem ]] &&
+               [[ -f private/$key.pem ]]; then
+                cat "certs/$cert.pem" "private/$key.pem" \
+                    >"pems/$1.client.pem"
+            fi
+            ;;
+        *)
+            if [[ -f certs/$cert.pem ]]; then
+                cat "certs/$cert.pem" "ca/ca.cert.pem" \
+                    >"pems/$1.chain.pem"
+            fi
+            ;;
+    esac
 }
 
 create_dh() {
