@@ -1,5 +1,7 @@
 # CertifyMe
 
+<a href="https://www.buymeacoffee.com/mjwhitta">🍪 Buy me a cookie</a>
+
 This tool is for quickly generating a root CA and client/server
 certificates.
 
