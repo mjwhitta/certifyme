@@ -311,7 +311,8 @@ usage() {
 Usage: ${0##*/} [OPTIONS] [host1]...[hostN]
 
 DESCRIPTION
-    Easily generate a self-signed CA issue client/server certificates.
+    Easily generate a self-signed CA and issue client/server
+    certificates.
 
 OPTIONS
     -c, --client=HOST      Create client certificate (can be used more
