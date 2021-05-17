@@ -279,12 +279,19 @@ setup() {
 
     sed \
         -e "s/TODO_CERTDAYS/${CERTDAYS:-5844}/g" \
+        -e "s/TODO_CERTDAYS/\&/g" \
         -e "s/TODO_CITY/\"${CITY:-delete}\"/g" \
+        -e "s/TODO_CITY/\&/g" \
         -e "s/TODO_CN/\"$1\"/g" \
+        -e "s/TODO_CN/\&/g" \
         -e "s/TODO_COMPANY/\"${COMPANY:-delete}\"/g" \
+        -e "s/TODO_COMPANY/\&/g" \
         -e "s/TODO_COUNTRY/\"${COUNTRY:-delete}\"/g" \
+        -e "s/TODO_COUNTRY/\&/g" \
         -e "s/TODO_STATE/\"${STATE:-delete}\"/g" \
+        -e "s/TODO_STATE/\&/g" \
         -e "s/TODO_UNIT/\"${UNIT:-delete}\"/g" \
+        -e "s/TODO_UNIT/\&/g" \
         -e "/delete/d" \
         "$tmpcnf" >certifyme.openssl.cnf
 }
