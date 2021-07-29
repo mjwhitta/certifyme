@@ -73,7 +73,7 @@ create_ca() {
 
     if [[ ! -f ca/ca.cert.pem ]] && [[ -f private/ca.key.pem ]]; then
         info "Generating ca.cert.pem"
-        openssl req -batch $sslcnf -days +"${CADAYS:-11688}" \
+        openssl req -batch $sslcnf -days +"${CADAYS:-365}" \
             -extensions v3_ca -key private/ca.key.pem -new \
             -out ca/ca.cert.pem -passin pass:"${CAPASS:-password}" \
             -sha256 -subj "/$subj" -x509
@@ -278,7 +278,7 @@ setup() {
     fi
 
     sed \
-        -e "s/TODO_CERTDAYS/${CERTDAYS:-5844}/g" \
+        -e "s/TODO_CERTDAYS/${CERTDAYS:-365}/g" \
         -e "s/TODO_CERTDAYS/\&/g" \
         -e "s/TODO_CITY/\"${CITY:-delete}\"/g" \
         -e "s/TODO_CITY/\&/g" \
@@ -530,9 +530,9 @@ case "$action" in
 ## Certificate related options
 
 # CACN="Self-signed CA"
-# CADAYS=11688
+# CADAYS=365
 # CAPASS="$(head -c 4 /dev/urandom | xxd -p)"
-# CERTDAYS=5844
+# CERTDAYS=365
 # CITY="City name"
 # COMPANY="Company name"
 # COUNTRY="US"
