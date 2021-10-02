@@ -48,10 +48,10 @@ check_deps() {
     done; unset d
     [[ -z $missing ]] || exit 128
 }
-err() { echo -e "${color:+\e[31m}[!] $*\e[0m"; }
+err() { echo -e "${color:+\e[31m}[!] $*${color:+\e[0m}" >&2; }
 errx() { err "${*:2}"; exit "$1"; }
-good() { echo -e "${color:+\e[32m}[+] $*\e[0m"; }
-info() { echo -e "${color:+\e[37m}[*] $*\e[0m"; }
+good() { echo -e "${color:+\e[32m}[+] $*${color:+\e[0m}"; }
+info() { echo -e "${color:+\e[37m}[*] $*${color:+\e[0m}"; }
 long_opt() {
     local arg shift="0"
     case "$1" in
@@ -61,8 +61,8 @@ long_opt() {
     echo "$arg"
     return $shift
 }
-subinfo() { echo -e "${color:+\e[36m}[=] $*\e[0m"; }
-warn() { echo -e "${color:+\e[33m}[-] $*\e[0m"; }
+subinfo() { echo -e "${color:+\e[36m}[=] $*${color:+\e[0m}"; }
+warn() { echo -e "${color:+\e[33m}[-] $*${color:+\e[0m}"; }
 ### Helpers end
 
 clean() { rm -f certifyme.openssl.cnf "$tmpcnf"; }
@@ -324,13 +324,13 @@ DESCRIPTION
 OPTIONS
     -c, --client=HOST      Create client certificate (can be used more
                            than once)
-    --conf=CONFIG          Use the specified certifyme.conf (default:
+        --conf=CONFIG      Use the specified certifyme.conf (default:
                            $pki/certifyme.conf)
-    --csr=FILE             Use the specified CSR for the first
+        --csr=FILE         Use the specified CSR for the first
                            requested client/server
     -d, --dh               Create Diffie-Hellman parameters
     -h, --help             Display this help message
-    --no-color             Disable colorized output
+        --no-color         Disable colorized output
     -p, --pki=DIR          Use specified PKI directory (default: $pki)
     -r, --rm=HOST          Remove a certificate (does NOT revoke)
     -s, --sample-config    Generate sample certifyme.conf
