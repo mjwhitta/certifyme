@@ -2,6 +2,9 @@
 
 <a href="https://www.buymeacoffee.com/mjwhitta">🍪 Buy me a cookie</a>
 
+**Note:** This tool has been deprecated in favor of
+[PKI](https://gitlab.com/mjwhitta/pki).
+
 This tool is for quickly generating a root CA and client/server
 certificates.
 
